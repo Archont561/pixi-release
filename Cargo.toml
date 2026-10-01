@@ -1,0 +1,27 @@
+[workspace]
+members = [
+  "crates/pixi-release-core",
+  "crates/pixi-release-git",
+  "crates/pixi-release",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Archont561/pixi-release"
+homepage = "https://github.com/Archont561/pixi-release"
+authors = ["Archont561 <142521648+Archont561@users.noreply.github.com>"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+pedantic = "warn"
+
+[workspace.dependencies]
+pixi-release-core = { path = "crates/pixi-release-core", version = "0.1.0" }
+pixi-release-git = { path = "crates/pixi-release-git", version = "0.1.0" }

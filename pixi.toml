@@ -1,0 +1,56 @@
+# The one reproducible developer environment and task entrypoint.
+[workspace]
+name = "pixi-release"
+version = "0.1.0"
+description = "Safe release workflow controller for Pixi projects"
+authors = ["Archont561 <142521648+Archont561@users.noreply.github.com>"]
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/Archont561/pixi-release"
+repository = "https://github.com/Archont561/pixi-release"
+channels = ["conda-forge"]
+# Bun's conda-forge package is resolved for the Linux CI/developer environment. Native
+# release artifacts will be built on their own runners rather than pretending this one
+# development lockfile is a cross-platform compiler SDK.
+platforms = ["linux-64"]
+requires-pixi = ">=0.81.0"
+
+[workspace.dependencies]
+rust = ">=1.98.1,<1.99"
+bun = ">=1.3.11,<1.4"
+convco = ">=0.7.2,<0.8"
+actionlint = ">=1.7.12,<1.8"
+lefthook = ">=2.1.15,<2.2"
+
+[feature.dev.dependencies]
+rust = { workspace = true }
+bun = { workspace = true }
+convco = { workspace = true }
+actionlint = { workspace = true }
+lefthook = { workspace = true }
+
+[environments]
+default = { features = ["dev"], solve-group = "default" }
+
+[tasks]
+# Fresh-clone materialisation. Turbo is deliberately not invoked until the Bun lock is installed.
+bun-install = { cmd = "bun install --frozen-lockfile", description = "Install the locked Bun workspace" }
+hooks-install = { cmd = "lefthook install", depends-on = ["bun-install"], description = "Install Git hooks" }
+setup = { depends-on = ["bun-install", "hooks-install"], description = "Materialise Bun dependencies and Git hooks" }
+
+# Canonical cross-package entrypoints. Package-local work lives beside its package; these tasks
+# route CI, hooks, and humans through the same Bun/Turbo graph.
+build = { cmd = "bun run all:build", depends-on = ["bun-install"], description = "Turbo build across every workspace package" }
+test = { cmd = "bun run all:test", depends-on = ["bun-install"], description = "Turbo test across every workspace package" }
+typecheck = { cmd = "bun run all:typecheck", depends-on = ["bun-install"], description = "Turbo type-check across every workspace package" }
+lint = { cmd = "bun run all:lint", depends-on = ["bun-install"], description = "Turbo lint across every workspace package" }
+fmt = { cmd = "bun run all:fmt", depends-on = ["bun-install"], description = "Turbo format across every workspace package" }
+
+# Repository-global utilities do not belong to a Turbo package.
+lint-commit = { cmd = "convco check --from-stdin", description = "Validate a conventional commit message" }
+lint-actions = { cmd = "actionlint", description = "Lint GitHub Actions workflows" }
+workflow-check = { cmd = "cargo run --manifest-path Cargo.toml -p pixi-release -- workflow check", description = "Check generated workflow scaffolding" }
+backlog = { cmd = "bun x backlog", depends-on = ["bun-install"], description = "Manage Backlog.md through its CLI" }
+
+# This is the local equivalent of the CI quality gate. Build remains a separate artifact gate.
+gates = { depends-on = ["lint", "typecheck", "test", "lint-actions", "workflow-check"], description = "Every required pre-merge check" }
+ci = { depends-on = ["gates", "build"], description = "Gates plus all workspace builds" }

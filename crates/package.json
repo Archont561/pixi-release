@@ -1,0 +1,12 @@
+{
+  "name": "@pixi-release/rust",
+  "private": true,
+  "description": "Turbo facade for the pixi-release Cargo workspace",
+  "scripts": {
+    "build": "cargo build --manifest-path ../Cargo.toml --workspace --release",
+    "test": "cargo test --manifest-path ../Cargo.toml --workspace",
+    "typecheck": "cargo check --manifest-path ../Cargo.toml --workspace --all-targets",
+    "lint": "cargo fmt --manifest-path ../Cargo.toml --all --check && cargo clippy --manifest-path ../Cargo.toml --workspace --all-targets --all-features -- -D warnings",
+    "fmt": "cargo fmt --manifest-path ../Cargo.toml --all"
+  }
+}

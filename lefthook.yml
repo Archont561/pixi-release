@@ -1,0 +1,32 @@
+# Every hook reaches the same Pixi -> Bun -> Turbo commands as CI.
+pre-commit:
+  parallel: true
+  commands:
+    format-js:
+      glob: "*.{js,jsx,ts,tsx,json,jsonc}"
+      run: pixi run fmt -- --filter=//
+      stage_fixed: true
+    format-rust:
+      glob: "crates/**/*.rs"
+      run: pixi run fmt -- --filter=@pixi-release/rust
+      stage_fixed: true
+
+pre-push:
+  parallel: true
+  commands:
+    lint:
+      run: pixi run lint
+    typecheck:
+      run: pixi run typecheck
+    test:
+      run: pixi run test
+
+commit-msg:
+  commands:
+    conventional:
+      run: pixi run lint-commit < {1}
+
+post-checkout:
+  commands:
+    install:
+      run: pixi run bun-install

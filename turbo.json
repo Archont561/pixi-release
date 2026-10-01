@@ -1,0 +1,49 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalDependencies": [
+    "package.json",
+    "bun.lock",
+    "pixi.toml",
+    "pixi.lock",
+    "Cargo.toml",
+    "Cargo.lock",
+    "biome.json"
+  ],
+  "globalEnv": ["PIXI_RELEASE_VERSION"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "fmt": {
+      "cache": false
+    },
+    "//#build": {
+      "outputs": []
+    },
+    "//#test": {
+      "outputs": []
+    },
+    "//#typecheck": {
+      "outputs": []
+    },
+    "//#lint": {
+      "inputs": ["**/*.{js,jsx,ts,tsx,json,jsonc}", "biome.json"]
+    },
+    "//#fmt": {
+      "cache": false
+    }
+  }
+}

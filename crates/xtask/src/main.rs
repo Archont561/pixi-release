@@ -18,15 +18,17 @@ use std::path::{Path, PathBuf};
 
 const USAGE: &str = "xtask <check>";
 
+/// Reads a version literal out of one manifest dialect.
+type VersionReader = fn(&str) -> Option<String>;
+
 fn main() {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     let root = repository_root();
-    let exit_code = match arguments.first().map(String::as_str) {
-        Some("check") => run_checks(&root),
-        _ => {
-            eprintln!("{USAGE}");
-            2
-        }
+    let exit_code = if arguments.first().map(String::as_str) == Some("check") {
+        run_checks(&root)
+    } else {
+        eprintln!("{USAGE}");
+        2
     };
     std::process::exit(exit_code);
 }
@@ -88,7 +90,7 @@ fn required_files(root: &Path, findings: &mut Vec<String>) {
 /// `.pixi-release.toml`'s `[version].manifests` list will own once `prepare` exists; until
 /// then it is checked, so the two cannot drift before the product can enforce it.
 fn versions_agree(root: &Path, findings: &mut Vec<String>) {
-    let sources: [(&str, fn(&str) -> Option<String>); 4] = [
+    let sources: [(&str, VersionReader); 4] = [
         ("Cargo.toml", workspace_package_version),
         ("pixi.toml", toml_top_level_version),
         ("package.json", json_version),
@@ -167,7 +169,10 @@ fn action_refs_are_immutable(root: &Path, findings: &mut Vec<String>) {
 }
 
 fn uses_value(line: &str) -> Option<&str> {
-    let trimmed = line.trim_start().strip_prefix("- ").unwrap_or(line.trim_start());
+    let trimmed = line
+        .trim_start()
+        .strip_prefix("- ")
+        .unwrap_or(line.trim_start());
     let rest = trimmed.strip_prefix("uses:")?;
     let value = rest.split('#').next().unwrap_or("").trim();
     (!value.is_empty()).then_some(value)
@@ -226,7 +231,8 @@ mod tests {
 
     #[test]
     fn a_uses_line_is_read_without_its_version_comment() {
-        let line = "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1";
+        let line =
+            "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1";
         assert_eq!(
             uses_value(line),
             Some("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1")

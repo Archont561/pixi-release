@@ -1,0 +1,29 @@
+# Shape: single-root Cargo, no Turbo, one JS package. Models pixi-sandbox and nadir.
+# The renderer must not emit `bun x turbo` for this consumer.
+schema = 1
+
+[project]
+version-source = "convco"
+tag-format     = "v{version}"
+
+[version]
+manifests = ["Cargo.toml", "pixi.toml", "package.json"]
+lockfiles = ["Cargo.lock", "bun.lock", "pixi.lock"]
+changelog = "CHANGELOG.md"
+
+[gates]
+required = ["gates"]
+
+[build]
+task        = "build-release-binary"
+environment = "package"
+
+[[build.matrix]]
+platform  = "linux-64"
+runner    = "ubuntu-latest"
+args      = "--target x86_64-unknown-linux-musl"
+artifacts = ["target/x86_64-unknown-linux-musl/release/sandbox-tool"]
+
+[[target]]
+name     = "github-release"
+required = true

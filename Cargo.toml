@@ -3,6 +3,7 @@ members = [
   "crates/pixi-release-core",
   "crates/pixi-release-git",
   "crates/pixi-release",
+  "crates/xtask",
 ]
 resolver = "3"
 

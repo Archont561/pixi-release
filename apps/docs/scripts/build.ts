@@ -15,7 +15,7 @@ const html = `<!doctype html>
 </html>\n`;
 
 await Bun.write(join(process.cwd(), "dist/index.html"), html);
-console.log("built docs/dist/index.html");
+console.log("built apps/docs/dist/index.html");
 
 function escapeHtml(value: string): string {
   return value

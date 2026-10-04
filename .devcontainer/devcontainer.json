@@ -1,0 +1,17 @@
+{
+  "name": "pixi-release",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers-extra/features/pixi:1": {}
+  },
+  "postCreateCommand": "pixi run setup",
+  "customizations": {
+    "vscode": {
+      "extensions": ["rust-lang.rust-analyzer", "biomejs.biome", "tamasfe.even-better-toml"],
+      "settings": {
+        "editor.formatOnSave": true,
+        "rust-analyzer.cargo.allTargets": true
+      }
+    }
+  }
+}

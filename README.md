@@ -10,11 +10,11 @@ pixi release plan
 
 ## One command surface
 
-Pixi is the entry point. Package-local commands live in `crates/package.json` and `docs/package.json`; Turbo fans them out; Pixi owns the reproducible toolchain and exposes the common verbs:
+Pixi is the entry point. Package-local commands live in `crates/package.json` and `apps/docs/package.json`; Turbo fans them out; Pixi owns the reproducible toolchain and exposes the common verbs:
 
 ```console
 pixi run setup       # install the Bun workspace and Git hooks
-pixi run gates       # lint, type-check, test, workflow check
+pixi run gates       # lint, type-check, test, actionlint, workflow check, repo checks
 pixi run build       # Turbo builds the Rust workspace and documentation stub
 pixi run fmt         # apply all formatters
 pixi run backlog -- board
@@ -27,10 +27,14 @@ pixi run backlog -- board
 - `crates/pixi-release-core` — deterministic release-domain types and planning invariants.
 - `crates/pixi-release-git` — semantic Git port plus a stateful fake for unit tests.
 - `crates/pixi-release` — the `pixi-release` executable; today it is a deliberately honest scaffold CLI.
-- `crates/package.json` — Turbo façade for Cargo.
-- `docs/` — private Bun workspace package for public documentation.
+- `crates/xtask` — owner-lane repository automation. Not the product: it is what cuts v0.1.0, because `pixi-release` may not be used to release `pixi-release`. It is deleted once a pinned prior release has been proven to do the job.
+- `crates/package.json` — Turbo façade for Cargo, covering every member.
+- `apps/docs/` — private Bun workspace package for public documentation.
+- `templates/workflows/` — golden renderer templates for the consumer lane.
+- `tests/fixtures/consumers/` — miniature consumer repositories in the three shapes the renderer must satisfy.
+- `.pixi-release.toml` — authored release policy, reviewed as data. The tool never rewrites it.
 - `backlog/` — canonical tasks, milestones, decisions, and project documents, managed only through Backlog.md.
-- `.knowledge/` — supporting research and exploration. Promote approved conclusions into Backlog.md rather than treating this directory as a competing registry.
+- `.knowledge/` — pointers, design history, and working-environment notes. Canonical text lives in `backlog/`; start at `.knowledge/README.md`.
 
 ## Bootstrap
 

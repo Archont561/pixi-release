@@ -1,0 +1,29 @@
+# Shape: per-package pixi.toml, no Cargo workspace at all. Models geoaiworkbench.
+# The decisive fixture for decision-2: a Rust-shaped controller is wrong here on day one.
+schema = 1
+
+[project]
+version-source = "manifest"
+tag-format     = "v{version}"
+
+[version]
+manifests = ["python/workbench/pyproject.toml", "python/workbench/pixi.toml", "package.json"]
+lockfiles = ["bun.lock", "python/workbench/pixi.lock"]
+changelog = "CHANGELOG.md"
+
+[gates]
+required = ["gates"]
+
+[build]
+task        = "build-wheel"
+environment = "package"
+
+[[build.matrix]]
+platform  = "linux-64"
+runner    = "ubuntu-latest"
+args      = ""
+artifacts = ["dist/*.whl", "dist/*.tar.gz"]
+
+[[target]]
+name     = "github-release"
+required = true

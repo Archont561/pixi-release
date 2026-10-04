@@ -5,9 +5,14 @@ const requiredFiles = [
   "Cargo.toml",
   "pixi.toml",
   "crates/package.json",
-  "docs/package.json",
+  "crates/xtask/Cargo.toml",
+  "apps/docs/package.json",
   "turbo.json",
   "lefthook.yml",
+  ".gitignore",
+  ".versionrc",
+  ".pixi-release.toml",
+  "deny.toml",
 ] as const;
 
 for (const relativePath of requiredFiles) {
@@ -19,10 +24,18 @@ for (const relativePath of requiredFiles) {
 
 const packageJson = await Bun.file(join(root, "package.json")).json();
 const workspaces = packageJson.workspaces as string[];
-for (const workspace of ["crates", "docs"]) {
+for (const workspace of ["crates", "apps/docs"]) {
   if (!workspaces.includes(workspace)) {
     throw new Error(`root package.json must declare ${workspace} as a workspace`);
   }
+}
+
+// crates/xtask is a Cargo member but deliberately has no package.json: the Turbo facade at
+// crates/package.json already drives `cargo --workspace`, which includes it. A second facade
+// would be a second command path (decision-1).
+const cargoToml = await Bun.file(join(root, "Cargo.toml")).text();
+if (!cargoToml.includes('"crates/xtask"')) {
+  throw new Error("Cargo.toml must declare crates/xtask as a workspace member");
 }
 
 console.log(`workspace contract verified (${process.argv.slice(2).join(" ") || "check"})`);

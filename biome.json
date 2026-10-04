@@ -7,7 +7,7 @@
       "!**/node_modules",
       "!**/.turbo",
       "!**/.pixi",
-      "!docs/dist",
+      "!apps/docs/dist",
       "!**/backlog"
     ]
   },

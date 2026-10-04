@@ -1,0 +1,25 @@
+# Convco is the version authority (AGENTS.md). YAML dialect, matching pathway,
+# qgis-rs and pixi-sandbox; geoquery's TOML dialect is the minority (doc-4 §9).
+host: https://github.com
+owner: Archont561
+repository: pixi-release
+
+types:
+  - type: feat
+    section: Features
+  - type: fix
+    section: Bug Fixes
+  - type: perf
+    section: Performance
+  - type: refactor
+    section: Refactoring
+  - type: docs
+    section: Documentation
+  - type: build
+    section: Build System
+  - type: ci
+    section: Continuous Integration
+  - type: test
+    hidden: true
+  - type: chore
+    hidden: true

@@ -13,7 +13,7 @@
     "crates": {
       "name": "@pixi-release/rust",
     },
-    "docs": {
+    "apps/docs": {
       "name": "@pixi-release/docs",
       "version": "0.1.0",
     },
@@ -37,7 +37,7 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.14", "", { "os": "win32", "cpu": "x64" }, "sha512-oJWmBhoHsnhUKIke+0gXDX0mltJrWHA1UyHsrTlXwX0TL64ilVZAo+TYZm97baecV0esBdpzy3k96q+09JaZUQ=="],
 
-    "@pixi-release/docs": ["@pixi-release/docs@workspace:docs"],
+    "@pixi-release/docs": ["@pixi-release/docs@workspace:apps/docs"],
 
     "@pixi-release/rust": ["@pixi-release/rust@workspace:crates"],
 

@@ -1,10 +1,41 @@
-# Decision history
+# Decisions — index and history
 
 Decisions themselves live in `backlog/decisions/` and the determinations they came from live in
-`backlog/docs/`. **This file does not restate either.** It holds the one thing neither has room
-for: how the design got here, and what was wrong with it before.
+`backlog/docs/`. **This file does not restate either.** It is an index, plus the one thing
+neither has room for: how the design got here, and what was wrong with it before.
 
-Index of current decisions: `README.md`.
+## Index
+
+Titles and ids only. Follow the link for the rule; nothing is summarised here, because a
+summary is a second copy that goes stale.
+
+| | Decision | Date | Status |
+|---|---|---|---|
+| `decision-1` | Use Pixi → Bun → Turbo as the only quality-gate entrypoint | 2026-10-01 | accepted |
+| `decision-2` | `pixi-release` is a release controller, not a build system | 2026-10-04 | proposed |
+| `decision-3` | Generated workflows are marked, stamped, drift-gated, and never float a production pin | 2026-10-04 | proposed |
+| `decision-4` | The annotated tag is the release evidence anchor | 2026-10-04 | proposed |
+
+Determinations that are canonical in a document rather than a decision, and where they live:
+
+| Determination | Canonical |
+|---|---|
+| Two release workflows: `cut` ≠ `publish` | `doc-2` §2.1, §3 |
+| A target is a registry, not a `(registry, platform)` pair | `doc-2` §2.4 |
+| One release at a time is a precondition, not a concurrency group | `doc-2` §2.5 |
+| Draft releases constrain the proof job | `doc-2` §2.6, `doc-5` |
+| Proof runs before channel upload | `doc-2` §3.2 |
+| Consumer proof owns half the problem, deliberately | `doc-2` §3.4 |
+| The command surface | `doc-2` §4 |
+| Abandon and yank | `doc-2` §6 |
+| Single-root Cargo workspace; grow crates on triggers | `doc-3` §1.2 |
+| `crates/xtask` is strictly owner-lane, with a deletion trigger | `doc-3` §1.3 |
+| `tests/fixtures/consumers/` is a first-class deliverable | `doc-3` §1.5 |
+| The workflow set to own, and the nine renderer behaviours | `doc-3` §2.2, §2.3 |
+| Delete the hand-maintained `git add` list | `doc-3` §2.5 |
+| Resume is an artifact contract, not a flag | `doc-3` §2.6 |
+| The `.pixi-release.toml` schema | `doc-3` §4 |
+| Action SHA pin list | `doc-4` §7b |
 
 ---
 

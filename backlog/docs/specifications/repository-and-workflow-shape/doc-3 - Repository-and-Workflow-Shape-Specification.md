@@ -47,33 +47,47 @@ correct for at least three different consumer shapes already in the wild (§3).
 
 ### 1.1 Determination — target tree
 
+Status markers are the state of the tree as scaffolded on 2026-10-04.
+
 ```
 pixi-release/
-├── .agents/skills/                 # vendored skills + skills-lock.json   [family standard, missing]
-├── .devcontainer/                  #                                       [family standard, missing]
+├── .agents/skills/                 # vendored skills + skills-lock.json   [STILL MISSING]
+├── .devcontainer/                  #                                       [done]
 ├── .github/
-│   ├── dependabot.yml              #                                       [missing]
-│   └── workflows/                  # see §2 — the owner lane               [missing entirely]
-├── .knowledge/                     # rationale, raw measurements, pointers (doc-6)
+│   ├── dependabot.yml              # actions + cargo only; locks go through relock  [done]
+│   └── workflows/ci.yml            # owner lane — §2.1                     [done]
+│                                   # release-* are RENDERED, not hand-written [pending REL-4]
+├── .knowledge/                     # pointers, design history, environment notes
 ├── backlog/                        # canonical tasks/milestones/decisions/docs
 ├── crates/
-│   ├── package.json                # Turbo façade for Cargo                [exists]
+│   ├── package.json                # Turbo façade for Cargo, all members   [exists]
 │   ├── turbo.json                  #                                       [exists]
 │   ├── pixi-release-core/          # deterministic domain                  [exists]
 │   ├── pixi-release-git/           # GitProtocol + FakeGit                 [exists]
 │   ├── pixi-release/               # the `pixi release` extension binary   [exists]
-│   └── xtask/                      # owner-lane repo automation            [ADD — §1.3]
-├── apps/docs/                      # Astro + Starlight                     [MOVE from docs/ — §1.4]
+│   └── xtask/                      # owner-lane repo automation — §1.3     [done]
+├── apps/docs/                      # moved from docs/ — §1.4               [done, still a stub]
+│                                   # Astro + Starlight                     [pending]
 ├── templates/workflows/*.tmpl      # golden renderer templates             [exists, placeholder]
-├── tests/fixtures/consumers/       # materialised consumer repos           [ADD — §1.5]
-├── .pixi-release.toml              # authored policy, `schema = 1`         [MISSING — README links it]
-├── .pixi-sandbox.toml              # this repo as a pixi-sandbox consumer  [ADD]
-├── .versionrc                      # convco authority                      [MISSING — AGENTS.md cites it]
-├── .gitignore                      #                                       [MISSING — see §1.6]
-├── deny.toml                       # cargo-deny                            [ADD]
+├── tests/fixtures/consumers/       # three consumer shapes — §1.5          [done, inputs only]
+├── .pixi-release.toml              # authored policy, `schema = 1`         [done]
+├── .pixi-sandbox.toml              # this repo as a pixi-sandbox consumer  [DEFERRED]
+├── .versionrc                      # convco authority, YAML dialect        [done]
+├── .gitignore · .gitattributes     #                                       [done]
+├── deny.toml                       # cargo-deny policy                     [done, tool not yet in pixi.toml]
 ├── biome.json · lefthook.yml · turbo.json · package.json · pixi.toml · Cargo.toml
 └── pixi.lock · bun.lock · Cargo.lock
 ```
+
+Two things are deliberately **not** scaffolded:
+
+- **`.github/workflows/release-*.yml`.** They are the product's output. Hand-writing them now
+  would create exactly the unstamped hand-maintained copy `decision-3` exists to prevent, and
+  `nadir` is the example of where that ends. The owner lane cuts v0.1.0 through `xtask` (§1.3)
+  until `workflow render` exists.
+- **`.pixi-sandbox.toml`.** Adopting a second bot before this repository has settled how two
+  renderers share one `.github/workflows/` is premature; that coexistence question is still
+  open in §6.
 
 ### 1.2 Determination — keep the single-root Cargo workspace; grow crates on triggers, not up front
 
@@ -129,17 +143,22 @@ excluding `.git`, `.pixi`, `target`, `node_modules`, `dist` (already specified i
 (`crates/pixi-sandbox/tests/fixtures/transport/`) and it is what lets its golden-workflow tests
 mean anything.
 
-### 1.6 Immediate gaps worth closing regardless of the shape decision
+### 1.6 Immediate gaps — closed
 
-1. **No `.gitignore` exists.** `AGENTS.md` lists `.pixi/`, `node_modules/`, `.turbo/`,
-   `target/`, `docs/dist/`, `.pixi-release/` as must-not-commit, and nothing enforces it.
-2. **`.pixi-release.toml` does not exist** but `README.md` links to it and `doc-1` calls it the
-   authored policy file. Ship the `schema = 1` skeleton (§4) so the link resolves and the parser
-   has a fixture.
-3. **`.versionrc` does not exist** but `AGENTS.md` names Convco the authority. Adopt the YAML
-   dialect (`pathway`/`qgis-rs`/`pixi-sandbox` — 3 of 4), not `geoquery`'s TOML.
-4. ~~**`backlog/decisions/decision-1`** is accepted with an empty body.~~ **Closed** — §1.7 was
-   promoted into `decision-1` as its body.
+All four were closed by the 2026-10-04 scaffold.
+
+1. ~~No `.gitignore` exists.~~ Added, enforcing the `AGENTS.md` never-commit list.
+   `.gitattributes` added alongside it to pin `eol=lf` and mark the lockfiles generated.
+2. ~~`.pixi-release.toml` does not exist~~ but `README.md` linked it and `doc-1` calls it the
+   authored policy file. Added at `schema = 1` per §4, which also gives the parser its first
+   fixture.
+3. ~~`.versionrc` does not exist~~ but `AGENTS.md` names Convco the authority. Added in the
+   YAML dialect (`pathway`/`qgis-rs`/`pixi-sandbox` — 3 of 4), not `geoquery`'s TOML.
+4. ~~`backlog/decisions/decision-1` is accepted with an empty body.~~ §1.7 was promoted into it.
+
+One gap remains open: `deny.toml` is committed but `cargo-deny` is not yet in `pixi.toml`, so
+nothing runs it. Adding the dependency requires re-solving `pixi.lock`, which belongs in its
+own reviewed change.
 
 ### 1.7 Determination — the task-graph entrypoint
 

@@ -1,0 +1,42 @@
+# Owner lane. Hand-written and specific to this repository, which is what every `ci.yml`
+# across Archont561/* already is (doc-4 §4b). The CONSUMER lane — the release workflows this
+# product renders into other repositories — is generated and must never be hand-edited
+# (decision-3). Keeping the two apart is doc-3 §2.1.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# cancel-in-progress is true for ci and false for every release lane (doc-4 §6 rule 9).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Pixi environment
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          environments: default
+          locked: true
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: . -> target
+
+      # One command surface: this is exactly what `pixi run ci` does locally (decision-1).
+      - name: Gates and builds
+        run: pixi run ci

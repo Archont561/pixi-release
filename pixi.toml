@@ -49,8 +49,11 @@ fmt = { cmd = "bun run all:fmt", depends-on = ["bun-install"], description = "Tu
 lint-commit = { cmd = "convco check --from-stdin", description = "Validate a conventional commit message" }
 lint-actions = { cmd = "actionlint", description = "Lint GitHub Actions workflows" }
 workflow-check = { cmd = "cargo run --manifest-path Cargo.toml -p pixi-release -- workflow check", description = "Check generated workflow scaffolding" }
+# Owner-lane repository checks: required files, version agreement across manifests, and
+# immutable action refs. Lives in xtask, not in the product (doc-3 §1.3).
+repo-check = { cmd = "cargo run --manifest-path Cargo.toml -p xtask -- check", description = "Owner-lane repository checks" }
 backlog = { cmd = "bun x backlog", depends-on = ["bun-install"], description = "Manage Backlog.md through its CLI" }
 
 # This is the local equivalent of the CI quality gate. Build remains a separate artifact gate.
-gates = { depends-on = ["lint", "typecheck", "test", "lint-actions", "workflow-check"], description = "Every required pre-merge check" }
+gates = { depends-on = ["lint", "typecheck", "test", "lint-actions", "workflow-check", "repo-check"], description = "Every required pre-merge check" }
 ci = { depends-on = ["gates", "build"], description = "Gates plus all workspace builds" }

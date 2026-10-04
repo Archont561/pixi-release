@@ -1,0 +1,30 @@
+# TEMPORARY. Delete before merge.
+# The authoring sandbox cannot reach results-receiver.actions.githubusercontent.com, so
+# `gh run view --log` is unavailable (.knowledge/research/agent-environment.md). This reports
+# each gate's output back through api.github.com, which is reachable.
+name: diagnose
+
+on:
+  push:
+    branches: ["arena/**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          environments: default
+          locked: true
+      - name: Run each gate, capturing output
+        run: bash .github/diagnose.sh
+      - name: Report
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment 1 --body-file /tmp/report.md

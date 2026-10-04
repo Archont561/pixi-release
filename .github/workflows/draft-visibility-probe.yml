@@ -1,13 +1,13 @@
 name: draft-visibility-probe
 
-# TEMPORARY. Delete after it has run once.
+# TEMPORARY. Delete after it has run.
 #
 # Verifies open question #1 of .knowledge/proposals/2026-10-04-consumer-experience.md:
-# can a job with `permissions: contents: read` list and download the assets of a DRAFT
-# GitHub Release? The `prove` job in the proposed release-publish.yml assumes yes.
+# can a job with `permissions: contents: read` list, view and download the assets of a
+# DRAFT GitHub Release? The proposed `prove` job assumes yes.
 #
-# Every step here is deliberately multi-line and non-fatal: the point is to collect exit
-# codes and error text from both permission levels, not to pass.
+# Results are written back into the draft release body, because the sandbox running this
+# investigation can reach api.github.com but not the Actions log or artifact blob hosts.
 
 on:
   push:
@@ -36,60 +36,107 @@ jobs:
           gh release view "$PROBE_TAG" --repo "$REPO" --json isDraft,assets \
             --jq '{isDraft, assets: [.assets[].name]}'
 
-  read-only:
+  subject:
     name: SUBJECT — contents read
     needs: seed
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      report: ${{ steps.p.outputs.report }}
     steps:
-      - name: Probe the draft with a read-only token
+      - id: p
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
+          : > r.txt
           probe() {
             label="$1"; shift
-            echo "----- $label"
             if out="$("$@" 2>&1)"; then
-              echo "RESULT: ok"
+              printf '| %s | ok | %s |\n' "$label" "$(echo "$out" | head -1 | tr -d '|' | cut -c1-90)" >> r.txt
             else
-              echo "RESULT: FAILED exit=$?"
+              code=$?
+              printf '| %s | **FAIL (%s)** | %s |\n' "$label" "$code" "$(echo "$out" | head -1 | tr -d '|' | cut -c1-90)" >> r.txt
             fi
-            echo "$out" | head -20
           }
-          probe "gh release list"     gh release list --repo "$REPO" --limit 20
-          probe "gh release view"     gh release view "$PROBE_TAG" --repo "$REPO"
-          probe "gh release download" gh release download "$PROBE_TAG" --repo "$REPO" --dir dl
-          probe "API get-by-tag"      gh api "repos/$REPO/releases/tags/$PROBE_TAG"
-          probe "API list releases"   gh api "repos/$REPO/releases"
-          echo "----- done (job intentionally green; read RESULT lines above)"
+          probe "gh release list"            gh release list --repo "$REPO" --limit 20
+          probe "gh release view <tag>"      gh release view "$PROBE_TAG" --repo "$REPO"
+          probe "gh release download <tag>"  gh release download "$PROBE_TAG" --repo "$REPO" --dir dl
+          probe "API GET releases/tags/<tag>" gh api "repos/$REPO/releases/tags/$PROBE_TAG"
+          probe "API GET releases (list)"    gh api "repos/$REPO/releases"
+          {
+            echo "report<<PROBE_EOF"
+            cat r.txt
+            echo "PROBE_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "collected:"; cat r.txt
 
-  read-write:
+  control:
     name: CONTROL — contents write
     needs: seed
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      report: ${{ steps.p.outputs.report }}
     steps:
-      - name: Probe the draft with a write token
+      - id: p
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
+          : > r.txt
           probe() {
             label="$1"; shift
-            echo "----- $label"
             if out="$("$@" 2>&1)"; then
-              echo "RESULT: ok"
+              printf '| %s | ok | %s |\n' "$label" "$(echo "$out" | head -1 | tr -d '|' | cut -c1-90)" >> r.txt
             else
-              echo "RESULT: FAILED exit=$?"
+              code=$?
+              printf '| %s | **FAIL (%s)** | %s |\n' "$label" "$code" "$(echo "$out" | head -1 | tr -d '|' | cut -c1-90)" >> r.txt
             fi
-            echo "$out" | head -20
           }
-          probe "gh release list"     gh release list --repo "$REPO" --limit 20
-          probe "gh release view"     gh release view "$PROBE_TAG" --repo "$REPO"
-          probe "gh release download" gh release download "$PROBE_TAG" --repo "$REPO" --dir dl
-          probe "API get-by-tag"      gh api "repos/$REPO/releases/tags/$PROBE_TAG"
-          probe "API list releases"   gh api "repos/$REPO/releases"
-          echo "----- done (job intentionally green; read RESULT lines above)"
+          probe "gh release list"            gh release list --repo "$REPO" --limit 20
+          probe "gh release view <tag>"      gh release view "$PROBE_TAG" --repo "$REPO"
+          probe "gh release download <tag>"  gh release download "$PROBE_TAG" --repo "$REPO" --dir dl
+          probe "API GET releases/tags/<tag>" gh api "repos/$REPO/releases/tags/$PROBE_TAG"
+          probe "API GET releases (list)"    gh api "repos/$REPO/releases"
+          {
+            echo "report<<PROBE_EOF"
+            cat r.txt
+            echo "PROBE_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "collected:"; cat r.txt
+
+  report:
+    name: write results into the draft body
+    needs: [subject, control]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SUBJECT: ${{ needs.subject.outputs.report }}
+          CONTROL: ${{ needs.control.outputs.report }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## SUBJECT — permissions: contents: read"
+            echo
+            echo "| probe | result | first line |"
+            echo "| --- | --- | --- |"
+            echo "$SUBJECT"
+            echo
+            echo "## CONTROL — permissions: contents: write"
+            echo
+            echo "| probe | result | first line |"
+            echo "| --- | --- | --- |"
+            echo "$CONTROL"
+          } > body.md
+          gh api "repos/$REPO/releases/tags/$PROBE_TAG" --jq .id > id.txt || \
+            gh release view "$PROBE_TAG" --repo "$REPO" --json databaseId --jq .databaseId > id.txt
+          gh api --method PATCH "repos/$REPO/releases/$(cat id.txt)" -F body=@body.md --jq .html_url
+          cat body.md

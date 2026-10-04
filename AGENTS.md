@@ -13,10 +13,10 @@ Backlog.md is the canonical operating system for delivery work and approved proj
 - Create and update tasks, subtasks, milestones, dependencies, plans, acceptance criteria, definition of done, project docs, and decisions through `pixi run backlog -- …`; do **not** hand-edit task Markdown.
 - Use the Backlog search and board surfaces before planning duplicate work.
 - Store approved/normative architecture in Backlog decisions and documents, linked to implementation tasks.
-- `.knowledge/` is supplementary: it retains rationale, raw measurements, historical decisions, and discovery pointers. Promote a conclusion into Backlog.md before treating it as a project rule. The test: **if someone would be wrong to contradict it, it is a Backlog document or decision.**
-- When a `.knowledge/` document is promoted, replace it with a one-line pointer stub naming the Backlog id. Never maintain two copies of the same text.
-- Raw measurements (`.knowledge/research/EVIDENCE.md`) and run records are never promoted. Tag every claim in them ✅ measured or ⚠️ reasoned.
-- New decisions land through Backlog decisions and are mirrored into `.knowledge/decisions.md`, which carries the reasoning and the rejected options. Start at `.knowledge/README.md`.
+- **One canonical source.** A statement exists in exactly one place: its rule in a decision, its specification in a document, its measurement in the research or spike document that produced it. Cite it by Backlog id and section — never restate it, and never leave a second copy behind.
+- Promote a conclusion into Backlog.md before treating it as a project rule. The test: **if someone would be wrong to contradict it, it is a Backlog document or decision.** On promotion, reduce the `.knowledge/` file to a one-line pointer stub.
+- `.knowledge/` keeps only what has no Backlog home: design history, directions rejected before they reached an ADR, and facts about the working environment. Start at `.knowledge/README.md`.
+- Tag every claim in a research, spike or environment file ✅ measured or ⚠️ reasoned.
 - Public user documentation belongs under `docs/`.
 
 The configured task prefix is `REL`.

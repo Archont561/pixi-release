@@ -24,23 +24,14 @@ Provenance of every claim below: **✅ measured** in this account or in a probe 
 
 ## 0. Precedent adopted, and the flaw corrected
 
-`pixi-sandbox` renders two workflows into five consumer repositories. Six behaviours to adopt
-unchanged, from `geoquery/.github/workflows/publish-sandbox.yml`:
+`pixi-sandbox` already renders two workflows into five consumer repositories. What that
+precedent does, measured: `doc-4` §4a. What this project binds itself to as a result —
+marker, stamp, policy digest, drift gate, reviewed upgrades, no floating pins, and the
+one-line-per-step repair: **`decision-3`**.
 
-| Observed in the generated consumer file | Adopt |
-|---|---|
-| Header marker + `# pixi-sandbox-version: 0.5.2` stamp | ✅ with `pixi-release-version` |
-| Version + channel pinned in the workflow's own `env:` block | ✅ the stamp **is** the pin |
-| `pixi global install --channel … "tool==${VERSION}"` | ✅ one line, exact pin |
-| `setup-pixi` with `run-install: false` | ✅ for controller jobs |
-| Generated steps call the **binary directly** | ✅ for controller work — §4 |
-| Upgrade/drift lane as a `schedule:` job | ✅ but as its own file — §3.3 |
+Everything below specifies the behaviour that contract implies for a consumer.
 
-**The flaw to fix.** The house rule is one line per step. The precedent's upgrade job breaks it
-three times; `consumer-proof.yml` breaks it four more, each marked `# multiline-run-allowed`.
-Shipping `self update`, `workflow check`, `upgrade pr` and `proof run` as subcommands makes
-each a single line. Multi-line bash in a generated file is bash nobody reviews and that
-`actionlint` cannot reason about.
+---
 
 ## 1. The three things a user ever does
 
@@ -142,59 +133,24 @@ without re-rendering silently desynchronises policy from the workflows enforcing
 The product's claim is that `cut` never publishes. Inside one file that is a convention; across
 two files with two triggers and two permission sets it is structural.
 
-### 2.2 The controller boundary — `pixi-release` never builds anything
+### 2.2 The controller boundary
 
-> `pixi-release` decides **what** must be built, **where**, and **what must come back**.
-> The repository decides **how**. The controller never runs a compiler.
+**`decision-2`** draws the boundary; `doc-3` §4 defines the `[build]` / `[[build.matrix]]`
+schema that expresses it.
 
-The build matrix is therefore **policy data, not tool knowledge**:
-
-```toml
-[build]
-task        = "build-release-binary"   # YOUR pixi task; the controller does not know it is cargo
-environment = "package"                # pixi env; "" renders run-install: false
-
-[[build.matrix]]
-platform  = "linux-64"
-runner    = "ubuntu-latest"
-args      = "--target x86_64-unknown-linux-musl"
-artifacts = ["target/x86_64-unknown-linux-musl/release/mytool"]
-# …four more
-```
-
-Three consequences:
-
-1. A wheels-only repository writes `artifacts = ["dist/*.whl", "dist/*.tar.gz"]` and one matrix
-   entry. `geoaiworkbench` becomes a supported shape by **configuration**, not a code path.
-2. `environment = "package"` renders `run-install: false` — `pixi-sandbox`'s empty-environment
-   win-64 trick as a policy value rather than renderer-hardcoded for everyone.
-3. What stays controller work is exactly what `doc-1` assigns it: plans, artifact manifests,
-   checksums, evidence, resume. `collect` is the only controller step in the matrix.
+The only consequence this specification needs: **`collect` is the only controller step inside
+the build matrix.** Every other step in that job is the repository's own task, so a build
+failure is never the controller's to explain.
 
 ### 2.3 The annotated tag is the evidence anchor
 
-`pixi-sandbox` already creates annotated tags (`git.tag_annotated`) with an **empty message**.
-That message is free, immutable, replicated with the repository, signable, and never expires —
-everything a cross-workflow plan handoff needs, and strictly better than a 7-day artifact.
+**`decision-4`.** `cut` writes the plan digest, policy digest and tool version as trailers in
+the annotated tag message; `verify`, in a later run, re-derives and compares. A mismatch is a
+refusal.
 
-`cut` writes:
-
-```
-my-tool v1.2.3
-
-pixi-release-plan: sha256:ab12cd…
-pixi-release-policy: sha256:9f2c1d…
-pixi-release-version: 0.1.0
-```
-
-`verify`, in a later workflow run and possibly days later, re-derives the plan from the **tagged
-tree + policy + history**, hashes it, and compares against the trailer. A mismatch means
-something changed between cut and publish — policy edited, history rewritten, tag moved — and
-is a refusal.
-
-This gives the plan a real immutability property instead of an asserted one, makes `plan` a
-provably pure function of its inputs, and does it **without committing `.pixi-release/`**,
-which `AGENTS.md` forbids.
+For this specification the operative consequences are: `prepare` and `publish` need no shared
+artifact store, resume works indefinitely rather than for seven days, and nothing is written
+to `.pixi-release/` that would have to be committed.
 
 ### 2.4 A target is a registry, not a platform
 
@@ -225,21 +181,13 @@ error: v1.2.3 is still a draft (3 of 2 targets complete, proof not run).
          abandon: pixi release abandon v1.2.3
 ```
 
-### 2.6 A draft release has no tag and is invisible to `contents: read`
+### 2.6 Draft releases constrain the proof job
 
-✅ **Measured** — probe run `37202120373`, 2026-10-04. Full method, verdict table and
-disposal record: `doc-5`. Raw numbers: `.knowledge/research/EVIDENCE.md`.
+**`doc-5`** measured two things about draft releases: `contents: read` cannot see one and fails
+silently, and `GET /releases/tags/{tag}` 404s for a draft even with write, because a draft
+creates no git tag.
 
-Two results constrain this specification:
-
-1. **`contents: read` cannot see a draft release, and fails silently** — `gh release list`
-   exits 0 with no rows, `GET /releases` returns `[]`, and no 403 is raised anywhere. A reader
-   is told the release does not exist.
-2. **`GET /releases/tags/{tag}` 404s for a draft even with `contents: write`**, because a draft
-   creates no git tag. The `gh` CLI hides this with a list-and-match fallback; the REST API does
-   not, and `pixi-release` is a Rust binary calling REST directly.
-
-Required behaviour:
+Required behaviour here:
 
 - The `prove` job runs with **`permissions: {}`** against the **workflow artifacts**, never
   against the draft. This is a stronger clean room than a token-bearing job, not a weaker one.
@@ -248,9 +196,8 @@ Required behaviour:
 - `release draft` **must** emit a `release-id` output. `triage`, `stage`, `publish` and
   `promote` address the draft **by ID**.
 - The forge port exposes `find_draft_by_tag_name()` implemented as *list + filter on
-  `tag_name`*, never `GET /releases/tags/{tag}`. This distinction carries a fake-backed
-  regression test.
-- The evidence record stores the **release ID**, not only the tag, so `resume` survives GitHub
+  `tag_name`*, never `GET /releases/tags/{tag}`, with a fake-backed regression test.
+- Evidence records store the **release ID**, not only the tag, so `resume` survives GitHub
   renaming an orphaned draft to `untagged-<hex>`.
 
 ---
@@ -620,12 +567,7 @@ six distinguishable things. They do not belong to one product:
 | pack → doctor → publish → clone → offline restore | **no** — that is pixi-sandbox's product | the project |
 
 ```toml
-[proof]
-enabled              = true
-isolated             = true        # env -i, scratch HOME, minimal PATH — no runner or repo state
-smoke                = ["{asset} --version", "{asset} --help"]
-expect-version       = true        # the binary's --version must equal the tag
-deterministic-render = false       # true if YOUR tool generates files
+# see doc-3 §4 for the canonical [proof] block
 ```
 
 **What the draft model buys.** `pixi-sandbox`'s proof runs `on: release: published` — *after*
@@ -636,7 +578,7 @@ dispatch the proof explicitly: one more hand-off that can be forgotten.
 Staging to a draft first lets the same proof run as a `needs:` gate on both `publish` and
 `promote`. A failure leaves everything unpublished.
 
-**What tier 1 does *not* prove.** A draft release is invisible to
+**What tier 1 does *not* prove** (§2.6). A draft release is invisible to
 anonymous requests, so tier 1's download is **authenticated**. It proves asset integrity,
 completeness and runnability; it does **not** prove that the public, unauthenticated URL works,
 or that the channel serves the package. Only a post-promotion check can, which is tier 2:
@@ -655,20 +597,41 @@ after promotion.
 
 ---
 
-## 4. The two-part invocation rule
+## 4. The command surface
 
-> **Controller work is `pixi-release <verb>`. Repository work is `pixi run <task>`.**
+**`decision-2`** states the invocation rule and why generated files call the binary directly
+rather than through a pixi task: *controller work is `pixi-release <verb>`, repository work is
+`pixi run <task>`.* The build step is the only `pixi run` in a generated workflow, because that
+work is the consumer's and must stay editable by them.
 
-- **Controller steps** call the binary directly. `pixi-release` is not a dependency of the
-  consumer's project — it is a release-time tool installed globally at the stamped version. A
-  rendered `pixi run release-cut` would depend on a task the consumer can edit, silently
-  changing CI while the file still claims to be generated. (`pixi-sandbox` already does this:
-  `run: … $(pixi-sandbox plan --config .pixi-sandbox.toml --json)`.)
-- **The build step** calls `pixi run -e <env> <task> -- <args>`, because that work *is* the
-  consumer's and must stay editable by them.
-- **`init` proposes thin pixi tasks** mirroring the controller verbs; **`workflow check` reports
-  a finding** when a proposed task drifts from the rendered command, so the two cannot silently
-  diverge.
+The canonical verb list:
+
+```text
+pixi release init            # scaffold .pixi-release.toml and render the workflows
+pixi release rehearse        # offline end-to-end lifecycle, bare remote + fake registries
+pixi release doctor          # diagnose policy, repo settings, and drift
+pixi release plan            # derive the immutable plan; refuses while a draft is unpromoted
+pixi release prepare         # apply version literals; record the touched set
+pixi release cut             # stage exactly the touched set, commit, annotated tag
+pixi release triage          # read draft state; emit need-build / remaining
+pixi release collect         # resolve artifact globs, name canonically, hash
+pixi release verify          # re-derive the plan from the tag trailer and compare
+pixi release publish         # upload to one registry, atomically, per target
+pixi release status          # where is this release?
+pixi release abandon         # drop an in-flight release; refuses once any target succeeded
+pixi release yank            # withdraw a published release; reports what it cannot withdraw
+pixi release proof run       # the clean-room consumer proof
+pixi release release draft   # create the draft; emits release-id
+pixi release release promote # flip the draft to published
+pixi release dispatch publish | downstream
+pixi release workflow render | check
+pixi release self update     # upgrade-lane only
+pixi release upgrade pr      # open the reviewed regeneration PR
+```
+
+`init` proposes thin pixi tasks mirroring these verbs for local use; `workflow check` reports a
+finding when a proposed task drifts from the rendered command, so the two cannot diverge
+silently.
 
 ---
 
@@ -781,9 +744,8 @@ check offline.
 
 ## 9. Open questions
 
-1. ~~**Can `contents: read` list and download draft release assets?**~~ **RESOLVED — no.**
-   Measured in this repository on 2026-10-04; see §2.6 for the evidence table, the silent-`[]`
-   failure mode, the unanticipated get-by-tag 404, and the two design changes that followed.
+1. ~~**Can `contents: read` list and download draft release assets?**~~ **Answered: no.**
+   `doc-5`.
 2. **Does `collect` impose canonical asset names, or does policy?** `{name}-{version}-{platform}{exe}`
    is convenient but asset names are a public contract. Leaning: a policy name template whose
    default is that string.

@@ -141,30 +141,14 @@ mean anything.
 4. ~~**`backlog/decisions/decision-1`** is accepted with an empty body.~~ **Closed** — §1.7 was
    promoted into `decision-1` as its body.
 
-### 1.7 Determination — the Turbo question, resolved rather than inherited
+### 1.7 Determination — the task-graph entrypoint
 
-> **Promoted to `decision-1` (accepted).** That decision is the normative text; this section is
-> retained as the reasoning that produced it.
+**`decision-1` (accepted).** Pixi → Bun → Turbo is the single route; the renderer must not
+assume Turbo; `turbo.json` stays minimal with `cache: false` on every Cargo-backed node.
 
-`decision-1` here accepts Pixi → Bun → Turbo. `pixi-sandbox`'s `decision-3` defers Turbo until
-≥3 JS packages, a real cross-package edge, and ≥60 s of repeated JS CI work. **`pixi-release`
-today has 2 packages (`crates`, `docs`), no cross-package edge, and a near-zero JS build.** By
-`pixi-sandbox`'s own triggers, Turbo is not yet earned.
-
-Keep it anyway, and write down the reason, because the reason is specific to this product:
-`pixi-release` must render correct workflows for Turbo-shaped consumers (`geoquery`, `pathway`,
-`qgis-rs`) *and* non-Turbo ones (`pixi-sandbox`, `nadir`). A renderer that hardcodes
-`bun x turbo run test` is wrong for two of five peers; a renderer whose authors have never run
-the Turbo path is wrong in subtler ways. Dogfooding the more complex of the two shapes is the
-cheaper mistake.
-
-Two obligations follow, and `decision-1` should carry them:
-
-- The renderer **must not** assume Turbo. `.pixi-release.toml` names the verbs; how a repository
-  implements `pixi run test` is that repository's business (§4).
-- `turbo.json` here stays minimal and must not acquire caching cleverness the product cannot
-  justify. `cache: false` on every Cargo-backed node (as `crates/turbo.json` already does) is
-  correct: Cargo owns that cache.
+Turbo is not earned by `pixi-sandbox`'s deferral triggers and is kept anyway for a
+product-specific reason. That reasoning, and the two obligations that bound the exception, are
+in the decision.
 
 ---
 
@@ -248,13 +232,9 @@ must make it structurally impossible rather than conventionally discouraged.
 
 ### 2.5 Determination — delete the hand-maintained `git add` list
 
-The concrete thing this product removes from `geoquery` and `qgis-rs`:
-
-```bash
-git add CHANGELOG.md Cargo.lock bun.lock pixi.lock Cargo.toml pixi.toml package.json \
-  apps/docs/package.json packages/geoquery/package.json \
-  python/geoquery/pixi.toml python/geoquery/pyproject.toml
-```
+The concrete thing this product removes from `geoquery` and `qgis-rs` is the hand-maintained
+eleven-path `git add` list in their `autorelease.yml`, quoted in `doc-4` §5b, together with the
+`version-check` script that exists only to catch it going stale.
 
 Replace with `pixi-sandbox`'s proven two-step contract, promoted to typed product behaviour:
 
@@ -299,24 +279,14 @@ And the rule behind it: **no per-OS shell dialects.** Staging, checksums, and ma
 are Rust subcommands so one runtime covers five runners —
 *"per-platform shell is where the v0.3.6 release died."*
 
-### 2.8 Determination — upgrades follow `pixi-sandbox`'s `decision-4`, plus a policy digest
+### 2.8 Determination — the generated-file contract
 
-> **Promoted to `decision-3` (proposed).** That decision is the normative text, and it adds the
-> `# pixi-release-policy: sha256:…` digest this section did not have.
+**`decision-3` (proposed).** Ownership marker, version stamp, policy digest,
+`pixi release workflow check` as the drift gate, upgrades as reviewed pull requests, and
+production pins that never float.
 
-`pixi-sandbox`'s `decision-4` is directly transferable and was adopted rather than re-derived:
-
-- Every rendered file carries an **ownership marker + version stamp**.
-- `pixi release workflow check` is the **drift gate**: render fresh, compare, exit non-zero,
-  **write nothing**.
-- An upgrade is "update the pinned version, re-render, open a PR" — never a hand-edited version
-  constant, because the template changes with the version.
-- **`.pixi-release.toml` is never rewritten by the tool.** An older `schema` is a reported
-  finding naming its migration path. *"The gate is the review, not the edit."*
-- **Production pins never float.** `latest` is permitted only while preparing an upgrade PR.
-
-`nadir`'s unstamped 59-line `publish-sandbox.yml` is what the absence of this contract looks
-like in the wild, and it is sitting in the same GitHub account.
+Adopted from `pixi-sandbox`'s `decision-4` rather than re-derived; the one addition is the
+policy digest. Evidence for why the contract is needed: `doc-4` §4a and §9.
 
 ---
 
@@ -338,11 +308,8 @@ The invariant that survives all three is the one the family already agreed on: *
 
 ## 4. `.pixi-release.toml` — proposed skeleton
 
-> **Superseded in part.** The authoritative policy shape now lives in
-> `doc-2`, which adds the
-> `[build]` / `[[build.matrix]]` and `[proof]` blocks and redefines a target as a *registry*
-> rather than a (registry, platform) pair. The skeleton below is still correct for
-> `[project]`, `[version]` and `[gates]`.
+This is the **single canonical description of `.pixi-release.toml`**. `doc-2` renders workflows
+from it and does not restate it.
 
 Following the `.pixi-sandbox.toml` precedent: small, `schema`-versioned, reviewed as data,
 declaring an entry is what schedules its proof.
@@ -367,10 +334,31 @@ changelog = "CHANGELOG.md"
 [gates]
 required = ["gates"]
 
+# pixi-release never compiles anything (decision-2). The matrix is policy data: the controller
+# copies these values into the workflow and runs YOUR task.
+[build]
+task        = "build-release-binary"   # your pixi task; the controller does not know it is cargo
+environment = "package"                # pixi env; an empty env renders run-install: false
+
+[[build.matrix]]
+platform  = "linux-64"
+runner    = "ubuntu-latest"
+args      = "--target x86_64-unknown-linux-musl"
+artifacts = ["target/x86_64-unknown-linux-musl/release/mytool"]
+# …one entry per platform
+
+[proof]
+enabled              = true
+isolated             = true        # env -i, scratch HOME, minimal PATH — no runner or repo state
+smoke                = ["{asset} --version", "{asset} --help"]
+expect-version       = true        # the binary's --version must equal the tag
+deterministic-render = false       # true if your tool generates files
+
 [workflows]
 render  = ["ci", "auto-release", "release"]
 runner  = "ubuntu-latest"
 
+# A target is a registry, not a (registry, platform) pair — doc-2 §2.4.
 [[target]]
 name     = "github-release"
 required = true

@@ -1,22 +1,24 @@
 # `.knowledge/`
 
-Durable context for `pixi-release` that is **not** a task and **not** a canonical specification.
+Durable context for `pixi-release` that is **not** a task and **not** canonical text.
 
 ## The split
 
 | Lives in | Contains |
 |---|---|
 | `backlog/tasks/` | Actionable work. Created and edited **only** through the Backlog CLI. |
-| `backlog/docs/` | Canonical specifications, research and spikes — the normative text. |
-| `backlog/decisions/` | Decisions, in ADR form. The rule, not the reasoning behind it. |
-| `.knowledge/` | Rationale, raw measurements, historical decisions, and discovery pointers. |
+| `backlog/docs/` | Canonical specifications, research and spikes. |
+| `backlog/decisions/` | Canonical rules, in ADR form. |
+| `.knowledge/` | Pointers, design history, and facts about the working environment. |
 
-The test for where something belongs: **if someone would be wrong to contradict it, it is a
-Backlog document or decision.** If it only explains *why* the canonical text says what it says,
-or is a number somebody measured, it stays here.
+**One canonical source.** A statement exists in exactly one place: its rule in a decision, its
+specification in a document, its measurement in the research or spike document that produced
+it. Other documents **cite** it — by Backlog id and section — and never restate it. A
+`.knowledge/` file that has been promoted is reduced to a one-line pointer stub, never a second
+copy.
 
-When a document is promoted into Backlog, the `.knowledge/` file **becomes a pointer stub**
-rather than a second copy. There is never a divergent fork of the same text.
+The test for what gets promoted: **if someone would be wrong to contradict it, it is a Backlog
+document or decision.**
 
 ## Canonical documents
 
@@ -35,26 +37,27 @@ rather than a second copy. There is never a divergent fork of the same text.
 | `decision-3` | Generated workflows are marked, stamped, drift-gated, and never float a production pin | proposed |
 | `decision-4` | The annotated tag is the release evidence anchor | proposed |
 
-## Never promoted
+Single canonical homes worth knowing: the `.pixi-release.toml` schema is `doc-3` §4; the action
+SHA pin list is `doc-4` §7b; the command surface is `doc-2` §4; the rendered workflow files are
+`doc-2` §3.
 
-These stay raw here, permanently:
+## What stays here, permanently
 
-- `research/EVIDENCE.md` — measurements, line counts, pinned SHAs, probe results. Numbers, not
-  prose. A specification cites these; it does not restate them.
-- `research/DRAFT-RELEASE-PROBE.md` — the run record for the `doc-5` spike, including the dead
-  ends. Reproducibility, not conclusions.
-- `decisions.md` — the running rationale log, including rejected options and the design history
-  that produced the canonical text.
+- `decisions.md` — how the design got here: the revision-2 defect ledger, and directions
+  rejected before they reached an ADR. No decision is restated.
+- `research/agent-environment.md` — what the agent sandbox can and cannot reach, and the CLI
+  gotchas that follow. Not project knowledge, so it has no Backlog home.
+- The pointer stubs.
 
 ## Conventions
 
-- **Provenance tags.** ✅ = empirically measured in this account or in a recorded run.
-  ⚠️ = reasoned assumption, still wants validation. An untagged claim in an evidence file is a
-  bug; untagged prose in a specification is specification, not evidence.
-- **Stable anchors.** Section numbers (`doc-2 §2.6`) and decision ids (`decision-4`) are stable
+- **Provenance tags.** ✅ = empirically measured. ⚠️ = reasoned assumption, still wants
+  validation. Required on every claim in a research, spike or environment file; specification
+  prose is unmarked because it is specification, not evidence.
+- **Stable anchors.** Section numbers (`doc-2` §2.6) and decision ids (`decision-4`) are stable
   and may be cited from code comments and commit messages. Renumber nothing without fixing the
   citations.
-- **Reference environment.** All ✅ measurements below were taken on 2026-10-04 against
+- **Reference environment.** All ✅ measurements were taken on 2026-10-04 against
   `Archont561/*` default branches and GitHub-hosted runners; probe runs used
   `Archont561/pixi-release` on branch `arena/01a10687-pixi-release`.
-- New decisions land through Backlog decisions and are mirrored into `decisions.md`.
+- New decisions land through the Backlog CLI. They are **not** mirrored here.

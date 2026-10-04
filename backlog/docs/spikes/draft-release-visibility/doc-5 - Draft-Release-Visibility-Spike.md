@@ -17,25 +17,32 @@ real release, so this was answered by experiment rather than by reading.
 
 ## Method
 
-Run in `Archont561/pixi-release` on 2026-10-04, on branch `arena/01a10687-pixi-release`.
+Run in `Archont561/pixi-release` on 2026-10-04, branch `arena/01a10687-pixi-release`.
 
-1. Created a throwaway **draft** release `v0.0.0-probe` (release ID `403008034`) via
-   `gh api --method POST /repos/{o}/{r}/releases` with `draft: true`.
-2. Pushed a temporary probe workflow with four jobs. Each job ran the same five probes under a
-   different permission set, and **every probe swallowed its exit code** and recorded the
-   outcome as text.
-3. Jobs reported findings by **appending to the draft release body over `api.github.com`**, not
-   as workflow artifacts or log output — see *Constraints* below.
-4. Read the verdict with `gh api /repos/{o}/{r}/releases/403008034 --jq .body`.
-5. Deleted the draft, the workflow and the probe commits' effects; verified `gh release list`
-   empty and `git ls-remote --tags origin` empty.
+Subject: a throwaway **draft** release `v0.0.0-probe`, numeric id **`403008034`**, created with
+`gh api --method POST /repos/Archont561/pixi-release/releases` and `draft: true`. Asset upload
+was attempted 4× and failed every time against `uploads.github.com`
+(`.knowledge/research/agent-environment.md`), so the probes ran against the release object
+itself — which is what the visibility question is about.
 
-Run `37202120373`. The raw transcript is `.knowledge/research/DRAFT-RELEASE-PROBE.md`.
+**Attempt 1 — commit `5ceb34c`, run `37202029536`. Discarded.** Three jobs at differing
+permission levels ran the probes as ordinary steps. All jobs reported `success` and the run was
+completely signal-free: the steps swallowed their exit codes, so `conclusion` said nothing about
+what the probes found, and the logs were unreadable from this environment.
 
-**Two method notes that mattered.** First, job and step `conclusion` are useless as probe
-signals once steps swallow exit codes — findings must be encoded in data that survives, not in
-pass/fail. Second, the first attempt (run `37202029536`) reported all jobs `success` while being
-entirely signal-free; it had to be redesigned.
+**Attempt 2 — commit `28e7572`, run `37202120373`. The measurement.** Four jobs, one per
+permission set. Each probe captured stdout, stderr and exit status into a text fragment, and
+each job appended its fragment to the **draft release body** over `api.github.com` — the one
+GitHub surface this environment can both write and read. All four jobs completed. The verdict
+was read with:
+
+```
+gh api repos/Archont561/pixi-release/releases/403008034 --jq .body
+```
+
+**Two method lessons.** Job and step `conclusion` are useless as probe signals once steps
+swallow exit codes — encode findings in data that survives, not in pass/fail. And a probe must
+report through a surface the observer can actually reach.
 
 ## Results
 
@@ -89,16 +96,20 @@ Both findings changed `doc-2` rather than merely constraining it.
 5. **Evidence records store the release ID, not only the tag**, so `resume` still finds a draft
    GitHub has renamed to `untagged-<hex>`.
 
-## Constraints discovered about the execution environment
+## Environment constraints that shaped the method
 
-⚠️ Environment-specific, recorded so the next spike does not rediscover them: the agent sandbox
-reaches `api.github.com` but **not** GitHub's blob/upload hosts. `uploads.github.com` (release
-asset upload) and `results-receiver.actions.githubusercontent.com` (`gh run view --log`) both
-fail with `EOF`. A probe must therefore report through an `api.github.com`-readable surface —
-release body, PR comment, or check output — and never rely on reading Actions logs.
+Not product knowledge, and recorded separately so the next spike does not rediscover them:
+`.knowledge/research/agent-environment.md`.
 
 ## Disposal
 
-The draft release, the probe workflow and `.github/` were all removed; `gh release list` and
-`git ls-remote --tags origin` are both empty. Three probe commits (`5ceb34c`, `28e7572`,
-`00c47eb`) remain on the working branch as an audit trail.
+1. `gh release delete v0.0.0-probe` → **failed, `release not found`** — Finding 2 reproducing
+   itself during its own cleanup, since there is no tag to resolve. GitHub had by then renamed
+   the orphaned draft to `untagged-5f8ddcdfb1feb84873c0`.
+2. `gh api --method DELETE repos/Archont561/pixi-release/releases/403008034` → exit 0.
+3. `git rm` the probe workflow; removed `.github/` entirely.
+4. Verified: `gh release list` empty, `git ls-remote --tags origin` empty, zero `.github` files
+   on the branch.
+
+Commit trail, retained deliberately as the only remaining proof the run happened:
+`95336ff` initial → `5ceb34c` probe v1 → `28e7572` probe v2 → `00c47eb` probe removal.

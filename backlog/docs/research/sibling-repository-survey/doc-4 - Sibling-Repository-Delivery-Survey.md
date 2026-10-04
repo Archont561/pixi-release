@@ -247,6 +247,28 @@ The most directly relevant prior art for `pixi-release`:
   path. *"The gate is the review, not the edit."*
 - Floating production pins are explicitly rejected.
 
+## 7b. Action SHA pins in use across the account
+
+✅ Measured. The single canonical pin list; rendered workflows in `doc-2` use these verbatim.
+
+```text
+actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1          # v7.0.1
+prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e      # v0.10.2
+actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a    # v7.0.1
+actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6        # v2.9.2
+softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
+```
+
+## 7c. Annotated-tag trailer space is unused
+
+✅ `gh api search/code "git tag -a" user:Archont561` → **0 hits**.
+✅ `pixi-sandbox`'s `crates/xtask/src/commit_release.rs` calls `git.tag_annotated` with an
+**empty message**.
+
+The real estate `decision-4` claims is therefore genuinely free across the whole account.
+
 ## 8. Config-file precedent (`.pixi-sandbox.toml`)
 
 ```toml

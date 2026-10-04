@@ -27,17 +27,9 @@ The build matrix is therefore **policy data, not tool knowledge**. `.pixi-releas
 `platform`, `runner`, `args` and the `artifacts` globs it must produce. The renderer copies
 those values into the workflow verbatim.
 
-Exactly one step in the rendered build matrix is the repository's own command:
-
-```yaml
-- name: Build                                     # repository work
-  run: pixi run -e package build-release-binary -- $ARGS
-- name: Collect                                   # controller work
-  run: pixi-release collect --platform "$PLATFORM" --out dist
-```
-
-`collect` resolves the declared globs, refuses an empty match, names canonically, and hashes.
-It compiles nothing.
+In the rendered build matrix, every step is the repository's own command except one: `collect`,
+which resolves the declared globs, refuses an empty match, names canonically, and hashes. It
+compiles nothing. The rendered form is `doc-2` §3.2.
 
 This yields the two-part invocation rule:
 
@@ -58,7 +50,6 @@ This yields the two-part invocation rule:
   installed globally at the stamped version. A rendered `pixi run release-cut` would depend on
   a task the consumer can edit, silently changing CI while the file still claims to be
   generated. `pixi-sandbox` already does this (`$(pixi-sandbox plan --config … --json)` in its
-  generated publisher). `init` proposes mirror pixi tasks for local use, and
-  `workflow check` reports when a proposed task has drifted from the rendered command.
+  generated publisher). The verb list is `doc-2` §4.
 - The controller cannot diagnose a build failure beyond "your task exited non-zero", which is
   the right trade: it also cannot break a build it does not understand.

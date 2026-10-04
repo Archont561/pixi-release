@@ -13,7 +13,10 @@ Backlog.md is the canonical operating system for delivery work and approved proj
 - Create and update tasks, subtasks, milestones, dependencies, plans, acceptance criteria, definition of done, project docs, and decisions through `pixi run backlog -- …`; do **not** hand-edit task Markdown.
 - Use the Backlog search and board surfaces before planning duplicate work.
 - Store approved/normative architecture in Backlog decisions and documents, linked to implementation tasks.
-- `.knowledge/` is supplementary: research, source notes, prototypes, rejected options, and raw observations belong there. Promote a conclusion into Backlog.md before treating it as a project rule.
+- `.knowledge/` is supplementary: it retains rationale, raw measurements, historical decisions, and discovery pointers. Promote a conclusion into Backlog.md before treating it as a project rule. The test: **if someone would be wrong to contradict it, it is a Backlog document or decision.**
+- When a `.knowledge/` document is promoted, replace it with a one-line pointer stub naming the Backlog id. Never maintain two copies of the same text.
+- Raw measurements (`.knowledge/research/EVIDENCE.md`) and run records are never promoted. Tag every claim in them ✅ measured or ⚠️ reasoned.
+- New decisions land through Backlog decisions and are mirrored into `.knowledge/decisions.md`, which carries the reasoning and the rejected options. Start at `.knowledge/README.md`.
 - Public user documentation belongs under `docs/`.
 
 The configured task prefix is `REL`.

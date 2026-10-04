@@ -37,6 +37,26 @@ jobs:
         with:
           workspaces: . -> target
 
-      # One command surface: this is exactly what `pixi run ci` does locally (decision-1).
-      - name: Gates and builds
-        run: pixi run ci
+      # One command surface (decision-1): every step below is one `pixi run <task>`, and the
+      # set of them is exactly `pixi run ci`. They are listed separately so a red run names the
+      # gate that failed in the job summary, without anyone needing to open the log.
+      - name: Lint
+        run: pixi run lint
+
+      - name: Typecheck
+        run: pixi run typecheck
+
+      - name: Test
+        run: pixi run test
+
+      - name: Lint workflows
+        run: pixi run lint-actions
+
+      - name: Workflow drift check
+        run: pixi run workflow-check
+
+      - name: Repository checks
+        run: pixi run repo-check
+
+      - name: Build
+        run: pixi run build

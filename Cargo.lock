@@ -17,3 +17,7 @@ version = "0.1.0"
 [[package]]
 name = "pixi-release-git"
 version = "0.1.0"
+
+[[package]]
+name = "xtask"
+version = "0.1.0"

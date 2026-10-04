@@ -1,0 +1,762 @@
+---
+id: doc-2
+title: Consumer Release Workflow Specification
+type: specification
+created_date: '2026-10-04 12:32'
+---
+## Purpose
+
+**What does it look like to be a user of `pixi-release`?** This document is the canonical
+answer: the journeys, the model, the rendered workflow files, the invocation rule, the failure
+and recovery behaviour, and the hard prohibitions.
+
+Scope is the **consumer side** — a repository that adopts the tool. The shape of the
+`pixi-release` repository itself is `doc-3`; the evidence both rest on is `doc-4`.
+
+Normative rules live in `decision-2` (the controller boundary), `decision-3` (the generated-file
+contract) and `decision-4` (the tag as evidence anchor). This document specifies the behaviour
+those decisions imply.
+
+Provenance of every claim below: **✅ measured** in this account or in a probe run;
+**⚠️ reasoned** and still wanting validation. Unmarked prose is specification, not evidence.
+
+---
+
+## 0. Precedent adopted, and the flaw corrected
+
+`pixi-sandbox` already renders two workflows into five consumer repositories. What that
+precedent does, measured: `doc-4` §4a. What this project binds itself to as a result —
+marker, stamp, policy digest, drift gate, reviewed upgrades, no floating pins, and the
+one-line-per-step repair: **`decision-3`**.
+
+Everything below specifies the behaviour that contract implies for a consumer.
+
+---
+
+## 1. The three things a user ever does
+
+### 1.1 Adopt (once, ~4 minutes)
+
+```console
+$ pixi global install --channel https://prefix.dev/archont561/archont561 \
+                      --channel conda-forge pixi-release
+
+$ cd my-repo && pixi release init
+wrote    .pixi-release.toml                          (new — review this, it is yours now)
+wrote    .github/workflows/release-prepare.yml       (generated, pixi-release 0.1.0)
+wrote    .github/workflows/release-publish.yml       (generated, pixi-release 0.1.0)
+wrote    .github/workflows/release-upgrade.yml       (generated, pixi-release 0.1.0)
+
+detected polyglot workspace: cargo (3 crates) · bun (2 packages) · python (1 project)
+  version literals found in 7 manifests
+  lockfiles: Cargo.lock, bun.lock, pixi.lock
+  build task not inferred — set [build].task before releasing
+
+add these to your pixi.toml so local commands match CI exactly:
+  [tasks]
+  release-plan     = "pixi-release plan"
+  release-rehearse = "pixi-release rehearse"
+  release-cut      = "pixi-release cut"
+  release-status   = "pixi-release status"
+
+next:  review .pixi-release.toml, then `pixi release rehearse`
+```
+
+`init` is the only command that writes `.pixi-release.toml`, and refuses to overwrite one (§6).
+
+### 1.2 Rehearse, then cut
+
+The defect this closes: a consumer's first signal that `[build].task` was misspelled
+was a red release. `rehearse` runs the entire lifecycle locally, offline, against a throwaway
+bare git remote and fake registry adapters — the exact test infrastructure `doc-1` already
+mandates (`FakeGit`, recording runners, local-bare-repository tests), exposed as a user command.
+
+```console
+$ pixi release rehearse
+pixi-release 0.1.0 · rehearsal · no network, no remote, nothing published
+
+  policy          .pixi-release.toml (schema 1)                     ok
+  doctor          4 settings checked, 1 unverifiable from here      warn
+  plan            0.4.2 → 0.5.0 (4 feat, 9 fix)                     ok
+  prepare         7 manifests + 3 lockfiles + CHANGELOG.md          ok
+  cut             tag v0.5.0 → fake remote, 11 files staged         ok
+  build           pixi run -e package build-release-binary × 5      SKIPPED (--no-build)
+  collect         declared artifacts resolved for 5/5 platforms     ok
+  verify          plan digest matches tag trailer                   ok
+  proof           smoke commands parsed; 2 commands, isolated       ok
+  publish         github-release, prefix                            ok (fake)
+  promote         draft → public                                    ok (fake)
+
+  warn  doctor: GitHub environment `release` cannot be checked offline
+  rehearsal left the worktree unchanged.
+```
+
+Then the real thing — **from anywhere, no checkout**:
+
+```console
+$ gh workflow run release-prepare.yml -f bump=auto
+$ gh workflow run release-prepare.yml -f dry-run=true     # diff only
+$ gh workflow run release-prepare.yml -f version=1.2.3    # explicit
+```
+
+### 1.3 Accept an upgrade PR
+
+Review the diff, merge. You never hand-edit a version constant — the template changes with the
+version.
+
+---
+
+## 2. The model
+
+```
+my-repo/
+├── .pixi-release.toml                   AUTHORED  — yours, reviewed as data, never rewritten
+└── .github/workflows/
+    ├── release-prepare.yml              GENERATED — plan → prepare → cut → tag
+    ├── release-publish.yml              GENERATED — triage → build → stage → prove → publish → promote
+    └── release-upgrade.yml              GENERATED — drift check → regenerate → PR
+```
+
+Every generated file opens with:
+
+```yaml
+# Generated by pixi-release. Regenerate this file instead of editing it.
+# pixi-release-version: 0.1.0
+# pixi-release-policy: sha256:9f2c1d…      ← digest of .pixi-release.toml at render time
+```
+
+The policy digest closes a hole the `pixi-sandbox` stamp leaves open: editing the config
+without re-rendering silently desynchronises policy from the workflows enforcing it.
+
+### 2.1 Two release workflows, not one
+
+The product's claim is that `cut` never publishes. Inside one file that is a convention; across
+two files with two triggers and two permission sets it is structural.
+
+### 2.2 The controller boundary
+
+**`decision-2`** draws the boundary; `doc-3` §4 defines the `[build]` / `[[build.matrix]]`
+schema that expresses it.
+
+The only consequence this specification needs: **`collect` is the only controller step inside
+the build matrix.** Every other step in that job is the repository's own task, so a build
+failure is never the controller's to explain.
+
+### 2.3 The annotated tag is the evidence anchor
+
+**`decision-4`.** `cut` writes the plan digest, policy digest and tool version as trailers in
+the annotated tag message; `verify`, in a later run, re-derives and compares. A mismatch is a
+refusal.
+
+For this specification the operative consequences are: `prepare` and `publish` need no shared
+artifact store, resume works indefinitely rather than for seven days, and nothing is written
+to `.pixi-release/` that would have to be committed.
+
+### 2.4 A target is a registry, not a platform
+
+Revision 2's status output listed `prefix:linux-64`, `prefix:osx-arm64` … as separate targets.
+That invites a channel serving three of five platforms while resume retries the rest, and a
+user on the missing platform gets "no candidates found".
+
+A target is a **registry**. Platform completeness is checked by `verify` *before* anything
+uploads, and the upload is one atomic call over the whole set — which is what
+`pixi upload prefix … dist/conda/conda-*/*.conda` already does in `pixi-sandbox`. Evidence is
+per-registry; resume skips registries, never platforms.
+
+### 2.5 One release at a time — a precondition, not a concurrency group
+
+GitHub `concurrency` cannot express "this workflow must wait for a *different* workflow's
+group", and two separate groups would allow v1.3.0 to be cut while v1.2.3 is mid-publish —
+after which the channel could receive 1.3.0 before 1.2.3 finished.
+
+The guard belongs in the tool: **`plan` refuses to start while an unpromoted draft release
+exists**, naming it and the resume command. That is testable against a fake forge, unlike a YAML
+concurrency expression.
+
+```console
+$ pixi release plan
+error: v1.2.3 is still a draft (3 of 2 targets complete, proof not run).
+       Finish or abandon it before cutting another release.
+         resume:  gh workflow run release-publish.yml -f version=v1.2.3
+         abandon: pixi release abandon v1.2.3
+```
+
+### 2.6 Draft releases constrain the proof job
+
+**`doc-5`** measured two things about draft releases: `contents: read` cannot see one and fails
+silently, and `GET /releases/tags/{tag}` 404s for a draft even with write, because a draft
+creates no git tag.
+
+Required behaviour here:
+
+- The `prove` job runs with **`permissions: {}`** against the **workflow artifacts**, never
+  against the draft. This is a stronger clean room than a token-bearing job, not a weaker one.
+- **Upload integrity** is a checksum read-back inside `stage`, where `contents: write` already
+  exists. It is a comparison, not an execution, so it does not want a clean room.
+- `release draft` **must** emit a `release-id` output. `triage`, `stage`, `publish` and
+  `promote` address the draft **by ID**.
+- The forge port exposes `find_draft_by_tag_name()` implemented as *list + filter on
+  `tag_name`*, never `GET /releases/tags/{tag}`, with a fake-backed regression test.
+- Evidence records store the **release ID**, not only the tag, so `resume` survives GitHub
+  renaming an orphaned draft to `untagged-<hex>`.
+
+---
+
+## 3. The generated workflows
+
+Action pins are the ones already in use across your repos.
+
+### 3.1 `release-prepare.yml`
+
+```yaml
+# Generated by pixi-release. Regenerate this file instead of editing it.
+# pixi-release-version: 0.1.0
+# pixi-release-policy: sha256:9f2c1d…
+name: release prepare
+
+# Phase 1 of 2 — plan → prepare → cut → tag. Never publishes. Ends by dispatching
+# release-publish.yml, because a tag pushed with GITHUB_TOKEN starts no workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:    { description: Bump level when no version is given, type: choice,
+                 options: [auto, patch, minor, major], default: auto }
+      version: { description: "Explicit version, e.g. 1.2.3. Overrides bump.", type: string, default: "" }
+      dry-run: { description: Print the plan and diff; commit, tag and push nothing., type: boolean, default: false }
+  workflow_call:
+    inputs:  { bump: {type: string, default: auto}, version: {type: string, default: ""},
+               dry-run: {type: boolean, default: false} }
+    secrets:
+      RELEASE_PUSH_TOKEN: { description: Only if branch protection blocks GITHUB_TOKEN., required: false }
+
+# contents: the release commit and tag.  actions: the final dispatch.
+# Both named here because a job-level block REPLACES this one rather than extending it.
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: pixi-release-${{ github.repository }}
+  cancel-in-progress: false            # never cancel a release midway
+
+env:
+  PIXI_RELEASE_VERSION: 0.1.0
+  PIXI_RELEASE_CHANNEL: https://prefix.dev/archont561/archont561
+
+jobs:
+  cut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0               # convco derives the bump from the whole history
+          persist-credentials: true
+          token: ${{ secrets.RELEASE_PUSH_TOKEN || github.token }}
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with: { run-install: false, cache: false }
+      - name: Install pixi-release
+        run: pixi global install --channel "$PIXI_RELEASE_CHANNEL" --channel conda-forge "pixi-release==${PIXI_RELEASE_VERSION}"
+
+      # Refuses while an unpromoted draft exists (§2.5). Writes only the plan.
+      - id: plan
+        env: { GH_TOKEN: "${{ github.token }}", BUMP: "${{ inputs.bump }}", VERSION: "${{ inputs.version }}" }
+        run: pixi-release plan --bump "$BUMP" --version "$VERSION" --out .pixi-release/plan.json
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with: { name: release-plan, path: .pixi-release/plan.json, if-no-files-found: error }
+
+      # Applies every version literal the plan names, regenerates the changelog, refreshes the
+      # lockfiles, records the touched path set back into the plan.
+      - run: pixi-release prepare --plan .pixi-release/plan.json
+
+      - if: ${{ inputs.dry-run }}
+        run: pixi-release cut --plan .pixi-release/plan.json --dry-run
+
+      # Refuses an existing remote tag BEFORE staging; stages exactly the recorded touched set;
+      # refuses any unaccounted modification; writes the plan digest into the annotated tag (§2.3).
+      - if: ${{ ! inputs.dry-run }}
+        run: pixi-release cut --plan .pixi-release/plan.json --push
+
+      - if: ${{ ! inputs.dry-run }}
+        env: { GH_TOKEN: "${{ secrets.RELEASE_PUSH_TOKEN || github.token }}", VERSION: "${{ steps.plan.outputs.version }}" }
+        run: pixi-release dispatch publish --version "$VERSION"
+```
+
+Every value reaches a `run:` through `env:`, never `${{ }}` inline — including maintainer-
+controlled ones. Uniformity means the renderer never classifies an input by trust level, and
+so can never get that classification wrong.
+
+### 3.2 `release-publish.yml` — six jobs, reordered
+
+```
+triage ─→ build (matrix, skippable) ─→ stage ─→ prove ─→ publish ─→ promote
+```
+
+The reorder matters: **the proof runs before the channel upload**, so it gates the
+irreversible half too, not just the GitHub Release.
+
+```yaml
+# Generated by pixi-release. Regenerate this file instead of editing it.
+# pixi-release-version: 0.1.0
+# pixi-release-policy: sha256:9f2c1d…
+name: release publish
+
+# Phase 2 of 2. Re-dispatching on the same tag RESUMES: triage skips the matrix when assets are
+# already staged and verified, and publish skips every registry with success evidence.
+#
+# pixi-release does not build. Each matrix entry runs the repository's own task.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version: { description: "Tag to publish or resume, e.g. v1.2.3", type: string, required: true }
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pixi-release-publish-${{ inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  PIXI_RELEASE_VERSION: 0.1.0
+  PIXI_RELEASE_CHANNEL: https://prefix.dev/archont561/archont561
+  RELEASE_TAG: ${{ inputs.version || github.ref_name }}
+
+jobs:
+  # Reads the draft's state and decides how much of this run is needed. Without it, resuming a
+  # single failed registry would otherwise rebuild five platforms.
+  triage:
+    runs-on: ubuntu-latest
+    outputs:
+      need-build: ${{ steps.t.outputs.need-build }}
+      remaining:  ${{ steps.t.outputs.remaining }}
+    steps:
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with: { run-install: false, cache: false }
+      - name: Install pixi-release
+        run: pixi global install --channel "$PIXI_RELEASE_CHANNEL" --channel conda-forge "pixi-release==${PIXI_RELEASE_VERSION}"
+      - id: t
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: pixi-release triage --version "$RELEASE_TAG" --report "$GITHUB_OUTPUT"
+
+  build:
+    needs: triage
+    if: needs.triage.outputs.need-build == 'true'
+    name: build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false                 # one platform's failure must not hide the others
+      # Rendered from [[build.matrix]]. The renderer copies these values; it does not know
+      # what a target triple means.
+      matrix:
+        include:
+          - { platform: linux-64,      runner: ubuntu-latest,    args: "--target x86_64-unknown-linux-musl" }
+          - { platform: linux-aarch64, runner: ubuntu-24.04-arm, args: "--target aarch64-unknown-linux-musl" }
+          - { platform: osx-64,        runner: macos-15-intel,   args: "--target x86_64-apple-darwin" }
+          - { platform: osx-arm64,     runner: macos-14,         args: "--target aarch64-apple-darwin" }
+          - { platform: win-64,        runner: windows-latest,   args: "--target x86_64-pc-windows-msvc" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ env.RELEASE_TAG }}", persist-credentials: false }
+      # [build].environment = "package" → run-install: false. An empty pixi environment needs
+      # no solve, so it resolves on every runner, win-64 included.
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with: { run-install: false, cache: false }
+      - name: Install pixi-release
+        run: pixi global install --channel "$PIXI_RELEASE_CHANNEL" --channel conda-forge "pixi-release==${PIXI_RELEASE_VERSION}"
+
+      # ─── the only step in this workflow that is the repository's own command ───
+      # The `--` is load-bearing: a pixi task takes one positional args string, and a bare
+      # `--target <triple>` is two arguments — how pixi-sandbox's v0.4.0 build died on all five
+      # runners. $ARGS is deliberately unquoted so it word-splits (shellcheck SC2086); the
+      # value is reviewed policy data, never user input, and `workflow check` re-asserts that.
+      - name: Build
+        env: { ARGS: "${{ matrix.args }}" }
+        run: pixi run -e package build-release-binary -- $ARGS
+
+      # Controller work: resolve the declared globs, refuse an empty match, rename canonically,
+      # hash. No compiler, no per-OS shell dialect.
+      - name: Collect
+        env: { PLATFORM: "${{ matrix.platform }}" }
+        run: pixi-release collect --platform "$PLATFORM" --out dist
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with: { name: "artifact-${{ matrix.platform }}", path: dist/**, if-no-files-found: error }
+
+  # Verify, then park everything on the draft release. Nothing public, nothing on a channel.
+  stage:
+    needs: [triage, build]
+    if: ${{ always() && needs.triage.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write                  # the draft release and its assets
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ env.RELEASE_TAG }}", fetch-depth: 0, persist-credentials: false }
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with: { run-install: false, cache: false }
+      - name: Install pixi-release
+        run: pixi global install --channel "$PIXI_RELEASE_CHANNEL" --channel conda-forge "pixi-release==${PIXI_RELEASE_VERSION}"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: needs.build.result == 'success'
+        with: { path: dist, pattern: "artifact-*" }   # one dir per platform, deliberately not merged
+
+      # Re-derives the plan from the tagged tree and compares it against the digest in the
+      # annotated tag (§2.3), then checks platform completeness and every checksum. Fails
+      # closed: a platform that silently produced nothing turns this red.
+      - name: Verify against the tag-anchored plan
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: pixi-release verify --version "$RELEASE_TAG" --artifacts dist
+
+      # Draft, with assets + SHA256SUMS + plan.json + an empty evidence.json. Idempotent.
+      # Emits `release-id` (§2.6: a draft has no git tag, so downstream jobs cannot resolve
+      # it by tag). Then reads its own uploaded assets back and compares checksums — the
+      # upload-integrity half of the proof, done here because `contents: write` already is.
+      - id: draft
+        name: Stage the draft release and read it back
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: pixi-release release draft --version "$RELEASE_TAG" --artifacts dist --verify-readback --report "$GITHUB_OUTPUT"
+
+  # MEASURED (§2.6): a draft release is invisible to `contents: read`, so this job cannot
+  # read the draft at all. It therefore proves the WORKFLOW ARTIFACTS instead — which needs
+  # no `contents` scope whatsoever, so the clean room is a real one. The complementary
+  # check, that the bytes on the draft match the bytes that were built, is a checksum
+  # read-back inside `stage`, where `contents: write` already exists.
+  prove:
+    needs: stage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: {}
+    steps:
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with: { run-install: false, cache: false }
+      - name: Install pixi-release
+        run: pixi global install --channel "$PIXI_RELEASE_CHANNEL" --channel conda-forge "pixi-release==${PIXI_RELEASE_VERSION}"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with: { path: dist, pattern: "artifact-*" }
+
+      # Re-verifies SHA256SUMS, then runs the policy's smoke commands in a clean room:
+      # empty environment, scratch HOME, minimal PATH, no checkout, no repository token.
+      # Proves integrity and runnability — not public reachability (§3.4).
+      - name: Prove the built artifacts
+        run: pixi-release proof run --artifacts dist --tier boundary
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with: { name: "proof-${{ env.RELEASE_TAG }}", path: .pixi-release/proof, retention-days: 14 }
+
+  publish:
+    needs: prove                       # nothing reaches a registry until the proof passes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release               # approval gate + OIDC trust boundary
+    permissions:
+      contents: write                  # append evidence to the draft
+      id-token: write                  # OIDC to the channel — no long-lived key
+    steps:
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with: { run-install: false, cache: false }
+      - name: Install pixi-release
+        run: pixi global install --channel "$PIXI_RELEASE_CHANNEL" --channel conda-forge "pixi-release==${PIXI_RELEASE_VERSION}"
+
+      # One call per registry over the whole platform set (§2.4), then append the outcome to
+      # evidence.json on the draft. Idempotent: a registry with success evidence is skipped,
+      # which IS the resume path.
+      - name: Publish the required registries
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: pixi-release publish --version "$RELEASE_TAG"
+
+  promote:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write                   # the downstream dispatches below
+    steps:
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with: { run-install: false, cache: false }
+      - name: Install pixi-release
+        run: pixi global install --channel "$PIXI_RELEASE_CHANNEL" --channel conda-forge "pixi-release==${PIXI_RELEASE_VERSION}"
+
+      # The only irreversible-and-public step, and the last one.
+      - name: Promote the draft
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: pixi-release release promote --version "$RELEASE_TAG"
+
+      # Nothing this run did will start another workflow on its own.
+      - name: Dispatch downstream workflows
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: pixi-release dispatch downstream --version "$RELEASE_TAG"
+```
+
+### 3.3 `release-upgrade.yml`
+
+Its own file, because `pixi-release` owns three generated files and the drift check covers all
+of them.
+
+```yaml
+# Generated by pixi-release. Regenerate this file instead of editing it.
+# pixi-release-version: 0.1.0
+name: release workflow upgrade
+
+on:
+  schedule: [{ cron: "17 4 * * 1" }]
+  workflow_dispatch:
+    inputs:
+      version: { description: Exact version to propose. Blank resolves the latest., type: string, default: "" }
+
+permissions:
+  contents: read
+
+env:
+  PIXI_RELEASE_VERSION: 0.1.0
+  PIXI_RELEASE_CHANNEL: https://prefix.dev/archont561/archont561
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    # A job-level block REPLACES the workflow-level one: `pull-requests: write` must be named
+    # here or the PR step gets a 403 — the exact trap pixi-sandbox's relock.yml documents.
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: true }
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with: { run-install: false, cache: false }
+
+      # Start from the exact version that rendered this file — never a resolver's "latest" —
+      # then ask that verified binary to move itself. Only a verified self-update result ever
+      # reaches a committed file.
+      - name: Install the pinned pixi-release
+        run: pixi global install --channel "$PIXI_RELEASE_CHANNEL" --channel conda-forge "pixi-release==${PIXI_RELEASE_VERSION}"
+      - id: update
+        env: { REQUESTED: "${{ inputs.version }}" }
+        run: pixi-release self update --to "$REQUESTED"
+      # Renders fresh into a temp dir, compares files and policy digest, writes nothing.
+      - id: check
+        run: pixi-release workflow check --report "$GITHUB_OUTPUT"
+      - if: steps.check.outputs.drift == 'true'
+        run: pixi-release workflow render --write
+      - if: steps.check.outputs.drift == 'true'
+        env: { GH_TOKEN: "${{ github.token }}", VERSION: "${{ steps.update.outputs.version }}" }
+        run: pixi-release upgrade pr --version "$VERSION"
+```
+
+### 3.4 Consumer proof: own half of it
+
+`pixi-sandbox`'s `consumer-proof.yml` (132 lines, four `# multiline-run-allowed` blocks) proves
+six distinguishable things. They do not belong to one product:
+
+| What it proves | Generic release concern? | Owner |
+|---|---|---|
+| The published asset downloads and matches `SHA256SUMS` | **yes** | `pixi-release` |
+| The binary runs with no repo, no toolchain, isolated `HOME` | **yes** | `pixi-release` |
+| `--version` agrees with the tag | **yes** | `pixi-release` |
+| The renderer is deterministic (run twice, `cmp`) | **yes**, for any tool that renders files | opt-in |
+| The generated file is release-based, not source-based | **yes**, as a content assertion | opt-in |
+| pack → doctor → publish → clone → offline restore | **no** — that is pixi-sandbox's product | the project |
+
+```toml
+# see doc-3 §4 for the canonical [proof] block
+```
+
+**What the draft model buys.** `pixi-sandbox`'s proof runs `on: release: published` — *after*
+the release is public — so a failure reports a broken release users can already install. And
+because a `GITHUB_TOKEN`-created release emits no `release: published` event, `release.yml` must
+dispatch the proof explicitly: one more hand-off that can be forgotten.
+
+Staging to a draft first lets the same proof run as a `needs:` gate on both `publish` and
+`promote`. A failure leaves everything unpublished.
+
+**What tier 1 does *not* prove** (§2.6). A draft release is invisible to
+anonymous requests, so tier 1's download is **authenticated**. It proves asset integrity,
+completeness and runnability; it does **not** prove that the public, unauthenticated URL works,
+or that the channel serves the package. Only a post-promotion check can, which is tier 2:
+
+- **Tier 1 · boundary** (gate, in `release-publish.yml`): integrity, completeness, clean-room
+  runnability, version agreement.
+- **Tier 2 · channel** (monitor, post-promotion): `pixi global install <tool>==X.Y.Z` and the
+  anonymous download. Cannot run earlier. On failure it records evidence and opens an issue,
+  because the only remedies at that point are a yank or a patch release.
+
+**What must not be absorbed:** the pack/doctor/publish/restore block. It needs product-specific
+knowledge the controller cannot have, and its 24 lines of bash are exactly the
+`# multiline-run-allowed` exceptions — folding them in would mean shipping the category of code
+this tool exists to delete. `pixi-release dispatch downstream` starts the project's own workflow
+after promotion.
+
+---
+
+## 4. The command surface
+
+**`decision-2`** states the invocation rule and why generated files call the binary directly
+rather than through a pixi task: *controller work is `pixi-release <verb>`, repository work is
+`pixi run <task>`.* The build step is the only `pixi run` in a generated workflow, because that
+work is the consumer's and must stay editable by them.
+
+The canonical verb list:
+
+```text
+pixi release init            # scaffold .pixi-release.toml and render the workflows
+pixi release rehearse        # offline end-to-end lifecycle, bare remote + fake registries
+pixi release doctor          # diagnose policy, repo settings, and drift
+pixi release plan            # derive the immutable plan; refuses while a draft is unpromoted
+pixi release prepare         # apply version literals; record the touched set
+pixi release cut             # stage exactly the touched set, commit, annotated tag
+pixi release triage          # read draft state; emit need-build / remaining
+pixi release collect         # resolve artifact globs, name canonically, hash
+pixi release verify          # re-derive the plan from the tag trailer and compare
+pixi release publish         # upload to one registry, atomically, per target
+pixi release status          # where is this release?
+pixi release abandon         # drop an in-flight release; refuses once any target succeeded
+pixi release yank            # withdraw a published release; reports what it cannot withdraw
+pixi release proof run       # the clean-room consumer proof
+pixi release release draft   # create the draft; emits release-id
+pixi release release promote # flip the draft to published
+pixi release dispatch publish | downstream
+pixi release workflow render | check
+pixi release self update     # upgrade-lane only
+pixi release upgrade pr      # open the reviewed regeneration PR
+```
+
+`init` proposes thin pixi tasks mirroring these verbs for local use; `workflow check` reports a
+finding when a proposed task drifts from the rendered command, so the two cannot diverge
+silently.
+
+---
+
+## 5. Failure and recovery
+
+| What happens | What the user sees | What they do |
+|---|---|---|
+| No releasable commits | `plan`: *"no feat/fix since v0.4.2"* | nothing — correct answer |
+| A draft is still unpromoted | `plan` refuses, naming it and the resume command (§2.5) | resume or abandon |
+| Tag exists on the remote | `cut` refuses **before** staging anything | pick another version |
+| A manifest edited mid-run | `cut`: *"unaccounted modification: apps/docs/package.json"* | commit or revert |
+| Policy edited between cut and publish | `verify`: *"plan digest does not match tag trailer"* | re-cut; the tag is stale |
+| Build task fails on one platform | that leg is red; `stage` never runs | fix, re-dispatch |
+| Build succeeded, produced nothing | `collect`: *"no match for declared artifact on win-64"* | fix `[[build.matrix]].artifacts` |
+| A platform leg skipped entirely | `verify` fails closed naming the missing platform | re-dispatch |
+| An asset uploaded truncated | **`prove` fails; nothing published anywhere** | re-dispatch |
+| Binary needs a library the runner happened to have | **`prove` fails in the clean room** | fix the build; nothing public |
+| Channel 500s after the GitHub target landed | draft keeps evidence for the registry that succeeded | re-dispatch; **no rebuild** (§triage) |
+| Channel install broken after promotion | tier-2 proof opens an issue with evidence | `pixi release yank` or patch |
+| Branch protection rejects the release commit | `cut` fails at push; no tag, nothing publishable | add `RELEASE_PUSH_TOKEN` |
+| Config edited without re-rendering | `workflow check`: policy-digest mismatch | `workflow render --write` |
+
+**The invariant:** the only irreversible-and-public step is `promote`, it is last, and
+everything before it is a refusal or an idempotent retry.
+
+```console
+$ pixi release status v1.2.3
+v1.2.3 · draft · proof passed · 1 of 2 registries complete
+
+  plan             sha256:ab12cd…  matches tag trailer
+  artifacts        5/5 platforms, SHA256SUMS verified
+  proof/boundary   ok    2026-10-04T09:11Z   2 smoke commands, isolated
+  github-release   ok    2026-10-04T09:12Z   7 assets
+  prefix           failed 2026-10-04T09:14Z  upstream 503
+
+resume with:  gh workflow run release-publish.yml -f version=v1.2.3
+              (triage will skip the build matrix — assets are already staged)
+```
+
+`resume` is not a mode; `publish` is idempotent. The verb prints the above and continues.
+`--force-republish <registry>` is the escape hatch.
+
+---
+
+## 6. Abandon and yank
+
+Revision 2 had no story for a bad release. Two verbs, because the two situations are different:
+
+```console
+$ pixi release abandon v1.2.3        # nothing was public
+deletes the draft release and its assets, deletes the remote tag, records an abandonment
+note. Refuses if any registry has success evidence — once something is published, the
+answer is yank, not abandon.
+
+$ pixi release yank v1.2.3 --reason "osx-arm64 binary links a missing libc++"
+marks evidence.json yanked, edits the GitHub Release body with the reason, and reports
+per registry what can and cannot be withdrawn. A conda channel cannot un-publish; the
+tool says so instead of pretending.
+```
+
+`yank` is deliberately not destructive beyond the GitHub Release. The honest output is a
+checklist of what a human must still do upstream — which is more useful than a command that
+appears to have cleaned up and has not.
+
+---
+
+## 7. What the tool must never do to a user's repository
+
+From `pixi-sandbox`'s `decision-4` — *"the gate is the review, not the edit"*:
+
+1. **Never rewrite `.pixi-release.toml`.** `init` refuses if it exists. An older `schema` is a
+   reported finding naming its migration path.
+2. **Never write `pixi.toml`, `package.json`, `Cargo.toml`, `lefthook.yml`, `.versionrc`**
+   outside a `prepare` run, and inside one only the version literals the plan declared.
+3. **Never run a compiler, packager or language toolchain** (§2.2).
+4. **Never float a pin.** `latest` is permitted only inside the upgrade job, to propose a PR.
+5. **Never edit a generated file in place to upgrade.** Self-update, then re-render.
+6. **Never publish from `cut`**; never reach a registry before the proof passes; never promote a
+   draft whose registries are not all green.
+7. **Never commit a file the plan did not record** — refuse instead.
+8. **Never claim to have withdrawn something it cannot withdraw** (§6).
+
+---
+
+## 8. The same four files, across the three consumer shapes
+
+| Shape | What `init` detects | What changes |
+|---|---|---|
+| Single-root Cargo, no Turbo (`pixi-sandbox`, `nadir`) | `Cargo.toml` + one JS package | nothing — the default |
+| Polyglot + Turbo (`geoquery`, `pathway`, `qgis-rs`) | `turbo.json`, `apps/*`, `packages/*`, `python/*` | more `[version].manifests`; `bun.lock` in the refresh set |
+| Per-package `pixi.toml`, no Cargo (`geoaiworkbench`) | `python/*/pixi.toml`, no root `Cargo.toml` | one matrix entry, `artifacts = ["dist/*.whl", …]` |
+
+Both varying things are **data**. The invariant, and why the policy file never contains the
+words `cargo`, `turbo`, `bun` or `pytest`: **`pixi run <verb>` is the interface.**
+
+### 8.1 One-time repository settings
+
+`init` prints these; `pixi release doctor` checks them; `rehearse` reports which it cannot
+check offline.
+
+- [ ] **Environment `release`**, with required reviewers for a human gate before upload.
+- [ ] **OIDC trust on the channel** — grant prefix.dev Repository Access to
+      `release-publish.yml`. No `PREFIX_API_KEY` is needed or wanted.
+- [ ] **Settings → Actions → "Allow GitHub Actions to create and approve pull requests"**,
+      or the upgrade job 403s.
+- [ ] **`RELEASE_PUSH_TOKEN`** — only if branch protection blocks `GITHUB_TOKEN`.
+- [ ] **Tag protection** for `v*`, if only the release identity should create tags.
+
+---
+
+## 9. Open questions
+
+1. ~~**Can `contents: read` list and download draft release assets?**~~ **Answered: no.**
+   `doc-5`.
+2. **Does `collect` impose canonical asset names, or does policy?** `{name}-{version}-{platform}{exe}`
+   is convenient but asset names are a public contract. Leaning: a policy name template whose
+   default is that string.
+3. **Is tier-2 (channel) proof rendered or documented?** It needs a schedule, issue-opening
+   permission, and a yank story. Possibly v2.
+4. **Who owns `SHA256SUMS`?** `collect` hashes per platform; the combined file spans the matrix
+   and can only be written in `stage`. The hashes then exist twice and `verify` must prove they
+   agree — an obligation worth naming in REL-6.
+5. **Does the tag trailer need a signature?** The digest proves the plan did not change; it does
+   not prove *who* cut it. `git tag -s` plus a recorded key fingerprint would, and the trailer is
+   already the right place. Probably post-v1, but the format should leave room.
+6. **Six jobs is a lot.** `triage`/`stage`/`prove`/`publish`/`promote` each re-install the tool
+   (~10 s each). A composite action would collapse that, but reintroduces the second version
+   domain §0 rejected. Measure before optimising.

@@ -13,8 +13,11 @@ Backlog.md is the canonical operating system for delivery work and approved proj
 - Create and update tasks, subtasks, milestones, dependencies, plans, acceptance criteria, definition of done, project docs, and decisions through `pixi run backlog -- …`; do **not** hand-edit task Markdown.
 - Use the Backlog search and board surfaces before planning duplicate work.
 - Store approved/normative architecture in Backlog decisions and documents, linked to implementation tasks.
-- `.knowledge/` is supplementary: research, source notes, prototypes, rejected options, and raw observations belong there. Promote a conclusion into Backlog.md before treating it as a project rule.
-- Public user documentation belongs under `docs/`.
+- **One canonical source.** A statement exists in exactly one place: its rule in a decision, its specification in a document, its measurement in the research or spike document that produced it. Cite it by Backlog id and section — never restate it, and never leave a second copy behind.
+- Promote a conclusion into Backlog.md before treating it as a project rule. The test: **if someone would be wrong to contradict it, it is a Backlog document or decision.** On promotion, reduce the `.knowledge/` file to a one-line pointer stub.
+- `.knowledge/` keeps only what has no Backlog home: design history, directions rejected before they reached an ADR, and facts about the working environment. Start at `.knowledge/README.md`.
+- Tag every claim in a research, spike or environment file ✅ measured or ⚠️ reasoned.
+- Public user documentation belongs under `apps/docs/`.
 
 The configured task prefix is `REL`.
 
@@ -28,8 +31,8 @@ pixi run <verb> → root package script → bun x turbo run <verb> → package s
 
 - `pixi.toml` owns toolchain versions and repo-global commands.
 - `package.json` owns the Bun workspace and root Turbo scripts.
-- `crates/package.json` owns Cargo's Turbo façade.
-- `docs/package.json` owns docs-package tasks.
+- `crates/package.json` owns Cargo's Turbo façade, covering every member including `xtask`.
+- `apps/docs/package.json` owns docs-package tasks.
 - `turbo.json` owns ordering/cache policy.
 - `lefthook.yml` and `.github/workflows/ci.yml` call only `pixi run <verb>`.
 
@@ -53,4 +56,4 @@ Run `pixi run gates` before handing off a change. Scope Turbo work only by forwa
 
 ## What not to commit
 
-Do not commit `.pixi/`, `node_modules/`, `.turbo/`, `target/`, `docs/dist/`, or `.pixi-release/`. Lockfiles are committed and reviewed.
+Do not commit `.pixi/`, `node_modules/`, `.turbo/`, `target/`, `apps/docs/dist/`, or `.pixi-release/`. Lockfiles are committed and reviewed. `.gitignore` enforces this.

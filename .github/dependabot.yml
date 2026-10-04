@@ -1,0 +1,24 @@
+# Pixi and Bun locks are deliberately absent here. The family handles those through the
+# relock bot (doc-4 §4a), which regenerates every lockfile in one reviewed pull request;
+# pointing Dependabot at them as well would produce two bots racing on the same files.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    groups:
+      cargo:
+        patterns: ["*"]

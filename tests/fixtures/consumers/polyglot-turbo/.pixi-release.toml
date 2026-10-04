@@ -1,0 +1,39 @@
+# Shape: polyglot apps/ + packages/ + crates/ + python/, driven by Turbo.
+# Models geoquery, pathway and qgis-rs. One `cargo build` is NOT the whole build here, so the
+# version manifest set spans four ecosystems — this is the hand-maintained `git add` list that
+# doc-3 §2.5 exists to delete.
+schema = 1
+
+[project]
+version-source = "convco"
+tag-format     = "v{version}"
+
+[version]
+manifests = [
+  "Cargo.toml",
+  "pixi.toml",
+  "package.json",
+  "apps/docs/package.json",
+  "packages/client/package.json",
+  "python/tool/pyproject.toml",
+  "python/tool/pixi.toml",
+]
+lockfiles = ["Cargo.lock", "bun.lock", "pixi.lock"]
+changelog = "CHANGELOG.md"
+
+[gates]
+required = ["gates"]
+
+[build]
+task        = "build-release"
+environment = "package"
+
+[[build.matrix]]
+platform  = "linux-64"
+runner    = "ubuntu-latest"
+args      = "--target x86_64-unknown-linux-musl"
+artifacts = ["target/x86_64-unknown-linux-musl/release/geo-tool", "dist/*.whl"]
+
+[[target]]
+name     = "github-release"
+required = true

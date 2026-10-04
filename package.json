@@ -7,7 +7,7 @@
   "packageManager": "bun@1.3.11",
   "workspaces": [
     "crates",
-    "docs"
+    "apps/docs"
   ],
   "scripts": {
     "all:build": "bun x turbo run build",

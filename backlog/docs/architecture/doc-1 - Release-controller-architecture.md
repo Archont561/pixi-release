@@ -3,7 +3,7 @@ id: doc-1
 title: Release controller architecture
 type: specification
 created_date: '2026-10-01 00:27'
-updated_date: '2026-10-01 00:27'
+updated_date: '2026-10-04 21:10'
 tags:
   - architecture
   - release
@@ -18,6 +18,8 @@ Approved project specification for the bootstrap boundary. Implementation tasks 
 ## Product boundary
 
 `pixi-release` is a typed release controller and workflow renderer for Pixi projects. It centralises release preparation, verification, artifact evidence, target publication, resume semantics, and generated workflow checks. It is not a generic CI generator and it must not duplicate Convco’s SemVer or changelog authority.
+
+Audience boundary: the measured consumer population is `Archont561/*`, and that is the delivery target through v1. Specifications are written to public-product standard — nothing may assume "install my app" or org-private secrets (`decision-5`) — but public adoption is explicitly deferred to post-v1, and obligations that only a public audience creates (tier-2 monitoring of foreign registries, config migration tooling for strangers) land after it, not before.
 
 ## Authority and formats
 

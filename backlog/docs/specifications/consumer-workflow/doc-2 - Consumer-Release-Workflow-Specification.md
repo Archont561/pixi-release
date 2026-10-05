@@ -228,7 +228,7 @@ on:
     inputs:  { bump: {type: string, default: auto}, version: {type: string, default: ""},
                dry-run: {type: boolean, default: false} }
     secrets:
-      RELEASE_PUSH_TOKEN: { description: Only if branch protection blocks GITHUB_TOKEN., required: false }
+      RELEASE_PUSH_TOKEN: { description: "Any push-capable token. Only if branch protection blocks GITHUB_TOKEN (decision-5).", required: false }
 
 # contents: the release commit and tag.  actions: the final dispatch.
 # Both named here because a job-level block REPLACES this one rather than extending it.
@@ -288,6 +288,15 @@ jobs:
 Every value reaches a `run:` through `env:`, never `${{ }}` inline — including maintainer-
 controlled ones. Uniformity means the renderer never classifies an input by trust level, and
 so can never get that classification wrong.
+
+**The push-token slot is credential-agnostic** (`decision-5`). `RELEASE_PUSH_TOKEN` accepts
+any push-capable token: a fine-grained PAT, or an installation token from a GitHub App the
+*consumer* registers and owns — the renderer can optionally emit a SHA-pinned
+`actions/create-github-app-token` step (pin: `doc-4` §7b) to mint one in-run. `pixi-release`
+itself ships no app. When the token is present it wins: pushes, tags and PRs made with it
+start workflows naturally, and rendered dispatch steps that exist only to compensate for
+`GITHUB_TOKEN` inertness are skipped. ✅ Measured 2026-10-04: no `Archont561/*` default branch
+carries rulesets, so inside the family this secret is never required today.
 
 ### 3.2 `release-publish.yml` — six jobs, reordered
 
@@ -457,7 +466,8 @@ jobs:
     needs: prove                       # nothing reaches a registry until the proof passes
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: release               # approval gate + OIDC trust boundary
+    environment: release               # from [publish].environment (doc-3 §4) — approval gate +
+                                       # OIDC trust boundary; omitted when the policy omits it
     permissions:
       contents: write                  # append evidence to the draft
       id-token: write                  # OIDC to the channel — no long-lived key
@@ -528,6 +538,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write                   # dispatch ci.yml at the PR head (decision-5)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: true }
@@ -547,10 +558,20 @@ jobs:
         run: pixi-release workflow check --report "$GITHUB_OUTPUT"
       - if: steps.check.outputs.drift == 'true'
         run: pixi-release workflow render --write
+      # A PR opened with github.token receives no CI verdict — the relock incident (doc-4
+      # §6.1) replayed. `upgrade pr` therefore dispatches ci.yml at the PR head and attaches
+      # the verdict; with RELEASE_PUSH_TOKEN configured, CI triggers naturally and the
+      # dispatch is skipped (decision-5).
       - if: steps.check.outputs.drift == 'true'
-        env: { GH_TOKEN: "${{ github.token }}", VERSION: "${{ steps.update.outputs.version }}" }
+        env: { GH_TOKEN: "${{ secrets.RELEASE_PUSH_TOKEN || github.token }}", VERSION: "${{ steps.update.outputs.version }}" }
         run: pixi-release upgrade pr --version "$VERSION"
 ```
+
+The defect this closes: revision 3 opened the upgrade PR with `github.token` and specified no
+verdict mechanism, so every upgrade PR would have landed reviewable but unverified — the
+measured relock failure (`doc-4` §6.1) rebuilt into a new workflow. `upgrade pr`'s two
+behaviours — dispatch-and-attach by default, token-natural when `RELEASE_PUSH_TOKEN` exists —
+are `decision-5` rules 3–4 and must both be covered by fake-forge tests.
 
 ### 3.4 Consumer proof: own half of it
 
@@ -733,11 +754,14 @@ words `cargo`, `turbo`, `bun` or `pytest`: **`pixi run <verb>` is the interface.
 check offline.
 
 - [ ] **Environment `release`**, with required reviewers for a human gate before upload.
+      ⚠️ Needs GitHub Pro on private repositories — a free-plan private repo omits
+      `[publish].environment` (doc-3 §4) and `doctor` reports the missing gate as a finding.
 - [ ] **OIDC trust on the channel** — grant prefix.dev Repository Access to
       `release-publish.yml`. No `PREFIX_API_KEY` is needed or wanted.
 - [ ] **Settings → Actions → "Allow GitHub Actions to create and approve pull requests"**,
       or the upgrade job 403s.
-- [ ] **`RELEASE_PUSH_TOKEN`** — only if branch protection blocks `GITHUB_TOKEN`.
+- [ ] **`RELEASE_PUSH_TOKEN`** — only if branch protection blocks `GITHUB_TOKEN`. Any
+      push-capable token: a fine-grained PAT or a consumer-owned app token (`decision-5`).
 - [ ] **Tag protection** for `v*`, if only the release identity should create tags.
 
 ---

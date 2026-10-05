@@ -366,6 +366,13 @@ args      = "--target x86_64-unknown-linux-musl"
 artifacts = ["target/x86_64-unknown-linux-musl/release/mytool"]
 # …one entry per platform
 
+# The publish job's approval gate. Deployment environments need GitHub Pro on private
+# repositories (✅ measured 2026-10-04: this repository, private on a free plan, cannot
+# create one). Omit `environment` and the publish job renders without a gate; `doctor`
+# reports the missing gate as a finding rather than rendering a line the repo cannot satisfy.
+[publish]
+environment = "release"
+
 [proof]
 enabled              = true
 isolated             = true        # env -i, scratch HOME, minimal PATH — no runner or repo state

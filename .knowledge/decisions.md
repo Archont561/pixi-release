@@ -15,6 +15,7 @@ summary is a second copy that goes stale.
 | `decision-2` | `pixi-release` is a release controller, not a build system | 2026-10-04 | proposed |
 | `decision-3` | Generated workflows are marked, stamped, drift-gated, and never float a production pin | 2026-10-04 | proposed |
 | `decision-4` | The annotated tag is the release evidence anchor | 2026-10-04 | proposed |
+| `decision-5` | No sibling GitHub App — the release push-token slot is consumer-owned | 2026-10-04 | proposed |
 
 Determinations that are canonical in a document rather than a decision, and where they live:
 
@@ -63,6 +64,15 @@ Defect 10 is the one worth remembering. It was the only item carried as an open 
 than a claim, and measuring it found a **second, unanticipated** failure — drafts have no git
 tag, so get-by-tag 404s even with write — that would have broken every draft lookup in
 production.
+
+## The revision-3 defect
+
+Found 2026-10-04 by grilling the sibling-GitHub-App proposal: `release-upgrade.yml` opened its
+PR with `github.token`, which starts no CI run — so every upgrade PR would have landed
+reviewable but unverified. That is the measured relock incident (`doc-4` §6.1) rebuilt into a
+brand-new workflow. Fixed in `decision-5` (dispatch-and-attach by default, token-natural when
+`RELEASE_PUSH_TOKEN` exists) and rendered in `doc-2` §3.3. The app proposal itself got an ADR
+rather than a line below, because it passed the promotion test: `decision-5`.
 
 ## Rejected directions, with no decision of their own
 

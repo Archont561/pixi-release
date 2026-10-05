@@ -36,6 +36,7 @@ document or decision.**
 | `decision-2` | `pixi-release` is a release controller, not a build system | proposed |
 | `decision-3` | Generated workflows are marked, stamped, drift-gated, and never float a production pin | proposed |
 | `decision-4` | The annotated tag is the release evidence anchor | proposed |
+| `decision-5` | No sibling GitHub App — the release push-token slot is consumer-owned | proposed |
 
 Single canonical homes worth knowing: the `.pixi-release.toml` schema is `doc-3` §4; the action
 SHA pin list is `doc-4` §7b; the command surface is `doc-2` §4; the rendered workflow files are

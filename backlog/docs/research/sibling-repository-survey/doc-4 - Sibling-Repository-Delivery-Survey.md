@@ -261,6 +261,13 @@ softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
 stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
 ```
 
+One addition **not yet observed in the account** (⚠️ resolved from the upstream release on
+2026-10-04, adopted by `decision-5` for the optional consumer-owned token-minting step):
+
+```text
+actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1    # v3.2.0
+```
+
 ## 7c. Annotated-tag trailer space is unused
 
 ✅ `gh api search/code "git tag -a" user:Archont561` → **0 hits**.

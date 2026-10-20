@@ -73,7 +73,7 @@ pixi-release/
 ├── .versionrc                      # convco authority, YAML dialect        [done]
 ├── .gitignore · .gitattributes     #                                       [done]
 ├── deny.toml                       # cargo-deny policy                     [done, tool not yet in pixi.toml]
-├── biome.json · lefthook.yml · turbo.json · package.json · pixi.toml · Cargo.toml
+├── lefthook.yml · turbo.json · package.json · pixi.toml · Cargo.toml
 └── pixi.lock · bun.lock · Cargo.lock
 ```
 

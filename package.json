@@ -17,11 +17,10 @@
     "build": "bun run crates/xtask/scripts/verify-workspace.ts --build",
     "test": "bun test crates/xtask/scripts",
     "typecheck": "bun run crates/xtask/scripts/verify-workspace.ts --typecheck",
-    "lint": "bun x biome check .",
-    "fmt": "bun x biome format --write ."
+    "all:coverage": "bun x turbo run coverage",
+    "coverage": "bun test --coverage --coverage-reporter=lcov --coverage-dir=coverage crates/xtask/scripts"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
     "backlog.md": "1.53.0",
     "turbo": "2.11.5"
   }

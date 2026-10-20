@@ -14,3 +14,6 @@ target/
 !.env.example
 *.log
 .DS_Store
+
+# Coverage reports (uploaded by CI, never committed)
+coverage/

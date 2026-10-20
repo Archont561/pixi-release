@@ -69,7 +69,6 @@ fn required_files(root: &Path, findings: &mut Vec<String>) {
         "pixi.toml",
         "package.json",
         "turbo.json",
-        "biome.json",
         "lefthook.yml",
         ".gitignore",
         ".versionrc",

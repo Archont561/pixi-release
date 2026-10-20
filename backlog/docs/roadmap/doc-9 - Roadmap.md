@@ -71,10 +71,9 @@ These are real work, deliberately not in v1:
 
 ## Open questions
 
-The questions from `doc-3` §6 are tracked as REL-9. REL-5 is blocked until they are answered.
-They cover the consumer entrypoint (composite action or package install), whether the renderer
-owns `ci.yml` and `docs.yml`, the relationship to `pixi-sandbox`'s markers and bots, and whether
-to seed from `pixi-sandbox`'s `xtask`.
+Answered in `decision-10` and REL-9 (done): entrypoint is `pixi global install` from the project
+channel, renderer scope is release lane only, `pixi-sandbox` and `pixi-release` own separate
+workflow files with distinct markers, and v0.1.0 is clean-room rather than seeded from `pixi-sandbox`'s `xtask`.
 
 ## Corrections made
 

@@ -426,21 +426,9 @@ tasks each consequence now belongs to.
 
 ## 6. Open questions for the maintainer
 
-Tracked by REL-9. These block M1 sizing until answered.
+Answered 2026-10-20 in `decision-10`. Tracked by REL-9, which is done.
 
-1. **Consumer entrypoint.** `geoquery` and `qgis-rs` pin `Archont561/pixi-sandbox/setup@<sha>`,
-   but no `setup/action.yml` exists at `pixi-sandbox` HEAD. Should `pixi-release` ship a
-   composite `setup/action.yml`, rely on `pixi global install` from a package channel, or both?
-   This decides whether rendered workflows contain a `uses:` or a bootstrap step.
-2. **Scope of the renderer.** Does `pixi-release` claim `ci.yml` and `docs.yml` (the remaining
-   divergent hand-written workflows), or stay strictly in the release lane? §2.2 proposes
-   claiming `ci` because the one-line-per-step rule is only enforceable if the renderer owns the
-   file — but that is a materially larger product.
-3. **Relationship to `pixi-sandbox`.** Both tools render workflows into the same
-   `.github/workflows/` directory, both will carry ownership markers, both will want a drift
-   PR bot. Do they share a marker/stamp convention and a single upgrade PR, or does each
-   consumer repository get two bots?
-4. **`pixi-sandbox`'s `xtask` as the seed.** `prepare_release.rs`, `commit_release.rs`,
-   `release_assets.rs`, `conda_platforms.rs`, `workflow.rs` and `repo_checks/` are already
-   tested against real git and bare remotes. Is `pixi-release` v0.1.0 a generalisation of that
-   code (fastest path, proven behaviour), or a clean-room implementation against `doc-1`?
+1. **Consumer entrypoint.** Answered: `pixi global install` from `https://prefix.dev/channels/@archont561/archont561`. No composite action in v1.
+2. **Scope of the renderer.** Answered: release lane only. `ci.yml` and `docs.yml` stay hand-written.
+3. **Relationship to `pixi-sandbox`.** Answered: `pixi-sandbox` owns `publish-sandbox.yml` and `relock.yml`; `pixi-release` owns `release.yml` and `auto-release.yml`. Distinct markers and stamps; separate drift bots.
+4. **`pixi-sandbox`'s `xtask` as the seed.** Answered: clean-room against `doc-1`.

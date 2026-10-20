@@ -2,7 +2,7 @@
 id: decision-4
 title: The annotated tag is the release evidence anchor
 date: '2026-10-04 12:32'
-status: proposed
+status: accepted
 ---
 ## Context
 

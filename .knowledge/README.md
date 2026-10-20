@@ -1,1 +1,0 @@
-Pointer: all `.knowledge/` content has been migrated into Backlog. Start at `backlog/README.md`. Canonical documents are `doc-1`–`doc-7` under `backlog/docs/`; decisions are `decision-1`–`decision-5` under `backlog/decisions/`.

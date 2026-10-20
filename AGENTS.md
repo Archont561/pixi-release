@@ -14,8 +14,9 @@ Backlog.md is the canonical operating system for delivery work and approved proj
 - Use the Backlog search and board surfaces before planning duplicate work.
 - Store approved/normative architecture in Backlog decisions and documents, linked to implementation tasks.
 - **One canonical source.** A statement exists in exactly one place: its rule in a decision, its specification in a document, its measurement in the research or spike document that produced it. Cite it by Backlog id and section — never restate it, and never leave a second copy behind.
-- Promote a conclusion into Backlog.md before treating it as a project rule. The test: **if someone would be wrong to contradict it, it is a Backlog document or decision.** On promotion, reduce the `.knowledge/` file to a one-line pointer stub.
-- `.knowledge/` is pointer-only. Its former contents (design history, rejected directions, working-environment facts) are Backlog documents `doc-6` and `doc-7`. Start at `.knowledge/README.md`.
+- Promote a conclusion into Backlog.md before treating it as a project rule. The test: **if someone would be wrong to contradict it, it is a Backlog document or decision.**
+- There is no `.knowledge/` directory. Design history, rejected directions, and working-environment facts are Backlog documents: `doc-6` (design history and index of determinations) and `doc-7` (agent sandbox environment). Do not recreate `.knowledge/`.
+- Stable anchors: section numbers (`doc-2` §2.6) and decision ids (`decision-4`) may be cited from code and commits. Renumber nothing without fixing the citations.
 - Tag every claim in a research, spike or environment file ✅ measured or ⚠️ reasoned.
 - Public user documentation belongs under `apps/docs/`.
 
@@ -45,6 +46,16 @@ Run `pixi run gates` before handing off a change. Scope Turbo work only by forwa
 - Keep `pixi-release` thin: parsing and presentation belong there, domain rules do not.
 - New crates opt into `[lints] workspace = true`; do not restate lint policy.
 - Tests must prefer behavior and public APIs. External process and real-local-bare-repository tests come after the fake proves policy behavior.
+
+## Session workflow
+
+Start and end every work session with `.agents/skills/session/SKILL.md`. It sequences environment bring-up, backlog survey, proposal, work, merge, and hand-off.
+
+## Merge policy
+
+- Every pull request merges with a normal merge commit: `gh pr merge <number> --merge`. Never `--squash`, `--rebase`, or `--auto`.
+- Do not rewrite history on `main` or on a pull request branch after review.
+- Do not push to any branch other than the session branch.
 
 ## Release safety rules
 

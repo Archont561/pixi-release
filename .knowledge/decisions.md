@@ -1,1 +1,0 @@
-Pointer to Backlog document `doc-6`, the design history and rejected directions (revision-2 and revision-3 defect ledgers). Decisions are indexed by `backlog decision list`; their rules live in `decision-1`–`decision-5`.

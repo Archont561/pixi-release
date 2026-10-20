@@ -57,7 +57,6 @@ pixi-release/
 │   ├── dependabot.yml              # actions + cargo only; locks go through relock  [done]
 │   └── workflows/ci.yml            # owner lane — §2.1                     [done]
 │                                   # release-* are RENDERED, not hand-written [pending REL-4]
-├── .knowledge/                     # pointers, design history, environment notes
 ├── backlog/                        # canonical tasks/milestones/decisions/docs
 ├── crates/
 │   ├── package.json                # Turbo façade for Cargo, all members   [exists]

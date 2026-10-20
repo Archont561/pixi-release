@@ -10,6 +10,11 @@ Facts about the **working environment** the agent sandbox provides, and the CLI 
 These are not product rules. Measurements were taken on 2026-10-04 (✅ measured) unless tagged
 otherwise.
 
+**Reference environment.** All ✅ measurements were taken on 2026-10-04 against `Archont561/*`
+default branches and GitHub-hosted runners; probe runs used `Archont561/pixi-release` on branch
+`arena/01a10687-pixi-release`. Re-measure before relying on a toolchain fact: the sandbox image can
+change between sessions.
+
 ## Network
 
 - Reachable: `api.github.com`, `registry.npmjs.org` (HTTP 200).

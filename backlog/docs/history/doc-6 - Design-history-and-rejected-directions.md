@@ -60,3 +60,49 @@ These were considered and dropped before they reached a decision, so no decision
   unanswerable.
 - **Dropping Turbo to match `pixi-sandbox`.** Rejected in `decision-1`, recorded here only because
   the opposite choice is the one a reader will expect.
+
+## Index of determinations
+
+Titles and ids only. Follow the link for the rule; nothing is summarised here, because a summary is
+a second copy that goes stale. Decisions are listed by `backlog decision list`.
+
+| Decision | Title | Status |
+|---|---|---|
+| `decision-1` | Use Pixi → Bun → Turbo as the only quality-gate entrypoint | accepted |
+| `decision-2` | `pixi-release` is a release controller, not a build system | proposed |
+| `decision-3` | Generated workflows are marked, stamped, drift-gated, and never float a production pin | proposed |
+| `decision-4` | The annotated tag is the release evidence anchor | proposed |
+| `decision-5` | No sibling GitHub App — the release push-token slot is consumer-owned | proposed |
+
+Determinations that are canonical in a document rather than a decision:
+
+| Determination | Canonical |
+|---|---|
+| Two release workflows: `cut` ≠ `publish` | `doc-2` §2.1, §3 |
+| A target is a registry, not a `(registry, platform)` pair | `doc-2` §2.4 |
+| One release at a time is a precondition, not a concurrency group | `doc-2` §2.5 |
+| Draft releases constrain the proof job | `doc-2` §2.6, `doc-5` |
+| Proof runs before channel upload | `doc-2` §3.2 |
+| Consumer proof owns half the problem, deliberately | `doc-2` §3.4 |
+| The command surface | `doc-2` §4 |
+| Abandon and yank | `doc-2` §6 |
+| Single-root Cargo workspace; grow crates on triggers | `doc-3` §1.2 |
+| `crates/xtask` is strictly owner-lane, with a deletion trigger | `doc-3` §1.3 |
+| `tests/fixtures/consumers/` is a first-class deliverable | `doc-3` §1.5 |
+| The workflow set to own, and the nine renderer behaviours | `doc-3` §2.2, §2.3 |
+| Delete the hand-maintained `git add` list | `doc-3` §2.5 |
+| Resume is an artifact contract, not a flag | `doc-3` §2.6 |
+| The `.pixi-release.toml` schema | `doc-3` §4 |
+| Action SHA pin list | `doc-4` §7b |
+
+Single canonical homes worth knowing: the `.pixi-release.toml` schema is `doc-3` §4; the action SHA
+pin list is `doc-4` §7b; the command surface is `doc-2` §4; the rendered workflow files are `doc-2` §3.
+
+## Conventions
+
+- **Stable anchors.** Section numbers (`doc-2` §2.6) and decision ids (`decision-4`) are stable and
+  may be cited from code comments and commit messages. Renumber nothing without fixing the citations.
+- **Provenance tags.** ✅ = empirically measured. ⚠️ = reasoned assumption, still wants validation.
+  Required on every claim in a research, spike or environment document; specification prose is
+  unmarked because it is specification, not evidence.
+- New decisions land through the Backlog CLI. They are not mirrored anywhere else.

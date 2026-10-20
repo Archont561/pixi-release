@@ -18,10 +18,12 @@
     "test": "bun test crates/xtask/scripts",
     "typecheck": "bun run crates/xtask/scripts/verify-workspace.ts --typecheck",
     "all:coverage": "bun x turbo run coverage",
-    "coverage": "bun test --coverage --coverage-reporter=lcov --coverage-dir=coverage crates/xtask/scripts"
+    "coverage": "bun test --coverage --coverage-reporter=lcov --coverage-dir=coverage crates/xtask/scripts",
+    "skills:restore": "skills experimental_install"
   },
   "devDependencies": {
     "backlog.md": "1.53.0",
+    "skills": "1.7.4",
     "turbo": "2.11.5"
   }
 }

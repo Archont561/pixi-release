@@ -126,6 +126,9 @@ precisely the "second CI command path" `AGENTS.md` forbids.
 
 ### 1.4 Determination — `docs/` → `apps/docs/`, Astro + Starlight
 
+> **Superseded 2026-10-20.** `apps/docs/` was removed. There is no public docs home in v1. The
+> rationale below is kept as history; do not implement it.
+
 Three of four peer repos use `apps/docs/` with Astro + Starlight and publish to Pages. The
 current `docs/` is a Bun script stub. Moving it now is cheap; moving it after the docs site
 exists is a redirect problem. Adopt `geoquery`'s version wiring: the site reads the version from
@@ -192,7 +195,7 @@ only through its own generated output cannot detect that its generator is broken
 | `ci.yml` | owner | **ship first** | one `pixi run <task>` per step; the step list is `pixi run gates` broken out |
 | `relock.yml` | consumer-generated, by `pixi-sandbox` | adopt as-is | do not re-invent; it is byte-identical across 3 peers |
 | `publish-sandbox.yml` | consumer-generated, by `pixi-sandbox` | adopt as-is | add `.pixi-sandbox.toml` |
-| `docs.yml` | owner | after `apps/docs/` | Pages, `paths:`-filtered |
+| `docs.yml` | owner | removed 2026-10-20 (no `apps/docs/`) | — |
 | `auto-release.yml` | owner → product | **the target** | `plan → prepare → cut`; one job, no inline bash |
 | `release.yml` | owner → product | **the target** | `verify → build → publish`; 5-platform matrix |
 | `consumer-proof.yml` | owner | before v1 | render into a clean fixture from the *published* release and run it |
@@ -343,7 +346,7 @@ bot-identity   = "pixi-release[bot]"
 # `git add` list in geoquery/qgis-rs — `cut` stages exactly what `prepare` reports here
 # and refuses anything else.
 [version]
-manifests = ["Cargo.toml", "pixi.toml", "package.json", "apps/docs/package.json"]
+manifests = ["Cargo.toml", "pixi.toml", "package.json"]  # apps/docs removed 2026-10-20
 lockfiles = ["Cargo.lock", "bun.lock", "pixi.lock"]
 changelog = "CHANGELOG.md"
 

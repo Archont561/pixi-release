@@ -1,8 +1,15 @@
 use std::process::Command;
 
-#[test]
-fn version_is_a_stable_cli_surface() {
-    let output = Command::new(env!("CARGO_BIN_EXE_pixi-release"))
+use rstest::{fixture, rstest};
+
+#[fixture]
+fn cli_bin() -> &'static str {
+    env!("CARGO_BIN_EXE_pixi-release")
+}
+
+#[rstest]
+fn version_is_a_stable_cli_surface(cli_bin: &str) {
+    let output = Command::new(cli_bin)
         .arg("--version")
         .output()
         .expect("scaffold binary should run");
@@ -14,9 +21,9 @@ fn version_is_a_stable_cli_surface() {
     );
 }
 
-#[test]
-fn unknown_command_is_refused() {
-    let output = Command::new(env!("CARGO_BIN_EXE_pixi-release"))
+#[rstest]
+fn unknown_command_is_refused(cli_bin: &str) {
+    let output = Command::new(cli_bin)
         .arg("unknown")
         .output()
         .expect("scaffold binary should run");

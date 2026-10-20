@@ -26,3 +26,7 @@ pedantic = "warn"
 [workspace.dependencies]
 pixi-release-core = { path = "crates/pixi-release-core", version = "0.1.0" }
 pixi-release-git = { path = "crates/pixi-release-git", version = "0.1.0" }
+rstest = "0.26.1"
+rstest-bdd = "0.6.0"
+rstest-bdd-macros = "0.6.0"
+tempfile = "3"

@@ -4,7 +4,7 @@ title: Enforce prepare and cut Git safety policy
 status: To Do
 assignee: []
 created_date: '2026-10-01 00:28'
-updated_date: '2026-10-20 19:12'
+updated_date: '2026-10-20 20:11'
 labels:
   - release
   - testing
@@ -30,6 +30,7 @@ Use the semantic Git port to implement dry-run preparation and a separate cut op
 - [ ] #2 cut refuses dirty trees, wrong branches, mismatched tags, stale plans, and failed gates.
 - [ ] #3 cut never invokes publication targets.
 - [ ] #4 Proven by a green gates run on the merge commit that covers this task's tests
+- [ ] #5 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->
 
 ## Definition of Done

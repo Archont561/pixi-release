@@ -4,6 +4,7 @@ title: Define the release manifest schema
 status: To Do
 assignee: []
 created_date: '2026-10-20 19:12'
+updated_date: '2026-10-20 20:11'
 labels:
   - architecture
 milestone: M2
@@ -24,4 +25,5 @@ The JSON manifest that the release presentation sidecar (doc-8) and install guid
 - [ ] #1 Schema document lists tag, version, per-platform artifacts with SHA-256, and succeeded targets only
 - [ ] #2 Schema version field and compatibility rule are recorded
 - [ ] #3 Decision recorded on where the manifest is stored
+- [ ] #4 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->

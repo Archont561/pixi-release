@@ -4,7 +4,7 @@ title: Dogfood sandbox publication and verified N−1 self-release
 status: To Do
 assignee: []
 created_date: '2026-10-01 00:28'
-updated_date: '2026-10-20 19:13'
+updated_date: '2026-10-20 20:11'
 labels:
   - release
   - ci
@@ -32,6 +32,7 @@ Add the project sandbox publication path and its CI validation, then make the re
 - [ ] #2 Self-release pins a released controller version, asset URL, and installer digest.
 - [ ] #3 The release workflow verifies controller assets before invoking any mutable release action.
 - [ ] #4 Proven by a green gates run on the merge commit that covers this task's tests
+- [ ] #5 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->
 
 ## Definition of Done

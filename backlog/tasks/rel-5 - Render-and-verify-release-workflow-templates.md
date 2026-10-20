@@ -4,7 +4,7 @@ title: Render and verify release workflow templates
 status: To Do
 assignee: []
 created_date: '2026-10-01 00:28'
-updated_date: '2026-10-20 19:51'
+updated_date: '2026-10-20 20:11'
 labels:
   - release
   - ci
@@ -32,6 +32,7 @@ Renderer half of the former REL-5: templates, golden fixtures, and the three con
 - [ ] #2 Fixture materialisation excludes .git, .pixi, target, node_modules, dist, and prior release state.
 - [ ] #3 Proven by a green gates run on the merge commit that covers this task's tests
 - [ ] #4 Rendered workflows bootstrap pixi-release with pixi global install from https://prefix.dev/channels/@archont561/archont561, with no uses: line (decision-10)
+- [ ] #5 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->
 
 ## Definition of Done

@@ -4,6 +4,7 @@ title: 'Gate generated-workflow drift with markers, stamps and workflow check'
 status: To Do
 assignee: []
 created_date: '2026-10-20 19:12'
+updated_date: '2026-10-20 20:11'
 labels:
   - release
 milestone: M2
@@ -23,4 +24,5 @@ The drift half of the former REL-5. The renderer marks generated files, stamps t
 <!-- AC:BEGIN -->
 - [ ] #1 workflow check detects generated-workflow drift and reports the source policy key
 - [ ] #2 Generated files carry the marker and the policy digest stamp
+- [ ] #3 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->

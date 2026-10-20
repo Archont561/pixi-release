@@ -42,7 +42,7 @@ pixi run backlog -- board
 
 | Capability | Status | Where |
 | :-- | :-- | :-- |
-| Authored release policy | Parsing and validation planned | [`.pixi-release.toml`](.pixi-release.toml), `doc-3` §4 |
+| Authored release policy | Specified in `doc-3` §4; the file is not in this repository yet | `doc-3` §4, `crates/xtask/fixtures/consumers/` |
 | Immutable release plans | Domain types in place, planning planned | `pixi-release-core`, `doc-1` |
 | Git safety for prepare and cut | Port and fake in place, policy planned | `pixi-release-git`, `decision-4` |
 | Consumer release workflows | Golden template in place; rendering planned. Generated files are never hand-edited | `crates/xtask/templates/workflows/`, `doc-2`, `decision-3` |
@@ -70,7 +70,6 @@ This repository is a single-root Cargo workspace plus a Bun workspace, both driv
 | `crates/pixi-release` | The `pixi-release` executable. Parsing and presentation only. |
 | `crates/xtask` | Owner-lane repository automation: Rust checks, the TypeScript workspace scripts, golden templates, and consumer fixtures. It is not the product, and it is deleted once a pinned prior release can do its job. |
 | `crates/package.json` | Turbo façade for Cargo, covering every member. |
-| `apps/docs/` | Private Bun workspace package for public documentation. |
 | `crates/xtask/templates/workflows/` | Golden renderer templates for the consumer lane. |
 | `crates/xtask/fixtures/consumers/` | Miniature consumer repositories in the shapes the renderer must satisfy. |
 | `crates/xtask/scripts/` | TypeScript workspace-contract checks and their tests, run by `pixi run build`, `typecheck`, and `test`. |
@@ -99,7 +98,6 @@ Before you open a pull request:
 
 - Run `pixi run gates`.
 - Record a design change as a decision in `backlog/decisions/` before you implement it.
-- Keep public documentation under `apps/docs/`.
 - Write commit messages in Conventional Commits form. Convco checks them.
 - Merge with a normal merge commit: `gh pr merge <number> --merge`. Squash and rebase merges are not used here.
 

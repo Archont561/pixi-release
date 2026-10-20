@@ -106,3 +106,8 @@ pin list is `doc-4` §7b; the command surface is `doc-2` §4; the rendered workf
   Required on every claim in a research, spike or environment document; specification prose is
   unmarked because it is specification, not evidence.
 - New decisions land through the Backlog CLI. They are not mirrored anywhere else.
+
+## Removals on 2026-10-20
+
+- **`apps/docs/`** was removed, with its Bun workspace entry, its lock entry, and its checks in `verify-workspace.ts` and `xtask`. Public documentation has no home in this repository until one is decided.
+- **`.pixi-release.toml`** (this repository's own authored policy) was removed. The schema is still specified in `doc-3` §4, and the consumer fixtures in `crates/xtask/fixtures/consumers/` still carry the policy shape. Restore the file when the policy parser (REL-2) lands.

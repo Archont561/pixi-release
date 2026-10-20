@@ -6,12 +6,10 @@ const requiredFiles = [
   "pixi.toml",
   "crates/package.json",
   "crates/xtask/Cargo.toml",
-  "apps/docs/package.json",
   "turbo.json",
   "lefthook.yml",
   ".gitignore",
   ".versionrc",
-  ".pixi-release.toml",
   "deny.toml",
 ] as const;
 
@@ -24,7 +22,7 @@ for (const relativePath of requiredFiles) {
 
 const packageJson = await Bun.file(join(root, "package.json")).json();
 const workspaces = packageJson.workspaces as string[];
-for (const workspace of ["crates", "apps/docs"]) {
+for (const workspace of ["crates"]) {
   if (!workspaces.includes(workspace)) {
     throw new Error(`root package.json must declare ${workspace} as a workspace`);
   }

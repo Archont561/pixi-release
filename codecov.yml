@@ -27,7 +27,6 @@ comment:
 ignore:
   - "crates/xtask/**"
   - "crates/*/tests/**"
-  - "apps/docs/**"
   - "backlog/**"
   - ".agents/**"
   - "**/dist/**"

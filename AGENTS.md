@@ -18,7 +18,6 @@ Backlog.md is the canonical operating system for delivery work and approved proj
 - There is no `.knowledge/` directory. Design history, rejected directions, and working-environment facts are Backlog documents: `doc-6` (design history and index of determinations) and `doc-7` (agent sandbox environment). Do not recreate `.knowledge/`.
 - Stable anchors: section numbers (`doc-2` §2.6) and decision ids (`decision-4`) may be cited from code and commits. Renumber nothing without fixing the citations.
 - Tag every claim in a research, spike or environment file ✅ measured or ⚠️ reasoned.
-- Public user documentation belongs under `apps/docs/`.
 
 The configured task prefix is `REL`.
 
@@ -33,7 +32,6 @@ pixi run <verb> → root package script → bun x turbo run <verb> → package s
 - `pixi.toml` owns toolchain versions and repo-global commands.
 - `package.json` owns the Bun workspace and root Turbo scripts.
 - `crates/package.json` owns Cargo's Turbo façade, covering every member including `xtask`.
-- `apps/docs/package.json` owns docs-package tasks.
 - `turbo.json` owns ordering/cache policy.
 - `lefthook.yml` and `.github/workflows/ci.yml` call only `pixi run <verb>`.
 
@@ -59,7 +57,7 @@ Start and end every work session with `.agents/skills/session/SKILL.md`. It sequ
 
 ## Release safety rules
 
-- Authored policy: `.pixi-release.toml`; generated workflows: YAML; immutable plans/manifests: JSON.
+- Authored policy: `.pixi-release.toml` (doc-3 §4, not yet present in this repository); generated workflows: YAML; immutable plans/manifests: JSON.
 - The future lifecycle is `plan → prepare → cut/tag → verify/build → publish → resume`.
 - `cut` must never publish by default. Publish must validate evidence and be resumable per target.
 - Self-release must install a pinned, verified prior release—not execute the unreleased checkout as its own controller.
@@ -67,4 +65,4 @@ Start and end every work session with `.agents/skills/session/SKILL.md`. It sequ
 
 ## What not to commit
 
-Do not commit `.pixi/`, `node_modules/`, `.turbo/`, `target/`, `apps/docs/dist/`, or `.pixi-release/`. Lockfiles are committed and reviewed. `.gitignore` enforces this.
+Do not commit `.pixi/`, `node_modules/`, `.turbo/`, `target/`, or `.pixi-release/`. Lockfiles are committed and reviewed. `.gitignore` enforces this.

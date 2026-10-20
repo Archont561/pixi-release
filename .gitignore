@@ -4,9 +4,6 @@ node_modules/
 .turbo/
 target/
 
-# Build output
-apps/docs/dist/
-
 # Controller working state — never committed (AGENTS.md).
 # decision-4 exists so the plan does not need to be: it lives in the annotated tag.
 .pixi-release/

@@ -65,11 +65,10 @@ pixi-release/
 │   ├── pixi-release-git/           # GitProtocol + FakeGit                 [exists]
 │   ├── pixi-release/               # the `pixi release` extension binary   [exists]
 │   └── xtask/                      # owner-lane repo automation — §1.3     [done]
-├── apps/docs/                      # moved from docs/ — §1.4               [done, still a stub]
-│                                   # Astro + Starlight                     [pending]
+├── apps/docs/                      # removed 2026-10-20 — was §1.4; no public docs home yet
 ├── crates/xtask/templates/workflows/*.tmpl  # golden renderer templates             [exists, placeholder]
 ├── crates/xtask/fixtures/consumers/ # three consumer shapes — §1.5          [done, inputs only]
-├── .pixi-release.toml              # authored policy, `schema = 1`         [done]
+├── .pixi-release.toml              # authored policy, `schema = 1`         [removed 2026-10-20; §4 still specifies it]
 ├── .pixi-sandbox.toml              # this repo as a pixi-sandbox consumer  [DEFERRED]
 ├── .versionrc                      # convco authority, YAML dialect        [done]
 ├── .gitignore · .gitattributes     #                                       [done]

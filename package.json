@@ -15,9 +15,9 @@
     "all:typecheck": "bun x turbo run typecheck",
     "all:lint": "bun x turbo run lint",
     "all:fmt": "bun x turbo run fmt",
-    "build": "bun run scripts/verify-workspace.ts --build",
-    "test": "bun test scripts",
-    "typecheck": "bun run scripts/verify-workspace.ts --typecheck",
+    "build": "bun run crates/xtask/scripts/verify-workspace.ts --build",
+    "test": "bun test crates/xtask/scripts",
+    "typecheck": "bun run crates/xtask/scripts/verify-workspace.ts --typecheck",
     "lint": "bun x biome check .",
     "fmt": "bun x biome format --write ."
   },

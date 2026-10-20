@@ -45,7 +45,7 @@ pixi run backlog -- board
 | Authored release policy | Parsing and validation planned | [`.pixi-release.toml`](.pixi-release.toml), `doc-3` §4 |
 | Immutable release plans | Domain types in place, planning planned | `pixi-release-core`, `doc-1` |
 | Git safety for prepare and cut | Port and fake in place, policy planned | `pixi-release-git`, `decision-4` |
-| Consumer release workflows | Golden template in place; rendering planned. Generated files are never hand-edited | `templates/workflows/`, `doc-2`, `decision-3` |
+| Consumer release workflows | Golden template in place; rendering planned. Generated files are never hand-edited | `crates/xtask/templates/workflows/`, `doc-2`, `decision-3` |
 | Artifact verification and resumable publish | Planned | `doc-2` §3, `doc-3` §2.6 |
 | Repository gates | Defined and run in CI: lint, type-check, test, actionlint, workflow and repo checks | `pixi.toml`, `crates/xtask` |
 
@@ -68,11 +68,12 @@ This repository is a single-root Cargo workspace plus a Bun workspace, both driv
 | `crates/pixi-release-core` | Release-domain types and deterministic planning invariants. |
 | `crates/pixi-release-git` | Semantic Git port (`GitProtocol`) plus a stateful fake for unit tests. |
 | `crates/pixi-release` | The `pixi-release` executable. Parsing and presentation only. |
-| `crates/xtask` | Owner-lane repository automation. It is not the product, and it is deleted once a pinned prior release can do its job. |
+| `crates/xtask` | Owner-lane repository automation: Rust checks, the TypeScript workspace scripts, golden templates, and consumer fixtures. It is not the product, and it is deleted once a pinned prior release can do its job. |
 | `crates/package.json` | Turbo façade for Cargo, covering every member. |
 | `apps/docs/` | Private Bun workspace package for public documentation. |
-| `templates/workflows/` | Golden renderer templates for the consumer lane. |
-| `tests/fixtures/consumers/` | Miniature consumer repositories in the shapes the renderer must satisfy. |
+| `crates/xtask/templates/workflows/` | Golden renderer templates for the consumer lane. |
+| `crates/xtask/fixtures/consumers/` | Miniature consumer repositories in the shapes the renderer must satisfy. |
+| `crates/xtask/scripts/` | TypeScript workspace-contract checks and their tests, run by `pixi run build`, `typecheck`, and `test`. |
 | `backlog/` | Canonical tasks, milestones, decisions, and project documents, managed only through Backlog.md. |
 | `.agents/skills/` | Agent skills for this repository, including `session` for work sessions. |
 

@@ -61,7 +61,7 @@ fn run_checks(root: &Path) -> i32 {
     1
 }
 
-/// The workspace contract. `scripts/verify-workspace.ts` asserts the JS half; this asserts the
+/// The workspace contract. `crates/xtask/scripts/verify-workspace.ts` asserts the JS half; this asserts the
 /// files a release depends on existing at all.
 fn required_files(root: &Path, findings: &mut Vec<String>) {
     const REQUIRED: &[&str] = &[

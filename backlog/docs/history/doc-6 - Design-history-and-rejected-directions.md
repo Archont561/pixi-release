@@ -88,7 +88,7 @@ Determinations that are canonical in a document rather than a decision:
 | Abandon and yank | `doc-2` §6 |
 | Single-root Cargo workspace; grow crates on triggers | `doc-3` §1.2 |
 | `crates/xtask` is strictly owner-lane, with a deletion trigger | `doc-3` §1.3 |
-| `tests/fixtures/consumers/` is a first-class deliverable | `doc-3` §1.5 |
+| `crates/xtask/fixtures/consumers/` is a first-class deliverable | `doc-3` §1.5 |
 | The workflow set to own, and the nine renderer behaviours | `doc-3` §2.2, §2.3 |
 | Delete the hand-maintained `git add` list | `doc-3` §2.5 |
 | Resume is an artifact contract, not a flag | `doc-3` §2.6 |

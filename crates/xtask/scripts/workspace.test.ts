@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
-const rootUrl = (path: string) => new URL(`../${path}`, import.meta.url);
+// This file lives at crates/xtask/scripts/, three levels below the repository root.
+const rootUrl = (path: string) => new URL(`../../../${path}`, import.meta.url);
 const rootPackage = await Bun.file(rootUrl("package.json")).json();
 
 test("the root package makes Cargo and docs visible to Turbo", () => {

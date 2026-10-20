@@ -67,8 +67,8 @@ pixi-release/
 │   └── xtask/                      # owner-lane repo automation — §1.3     [done]
 ├── apps/docs/                      # moved from docs/ — §1.4               [done, still a stub]
 │                                   # Astro + Starlight                     [pending]
-├── templates/workflows/*.tmpl      # golden renderer templates             [exists, placeholder]
-├── tests/fixtures/consumers/       # three consumer shapes — §1.5          [done, inputs only]
+├── crates/xtask/templates/workflows/*.tmpl  # golden renderer templates             [exists, placeholder]
+├── crates/xtask/fixtures/consumers/ # three consumer shapes — §1.5          [done, inputs only]
 ├── .pixi-release.toml              # authored policy, `schema = 1`         [done]
 ├── .pixi-sandbox.toml              # this repo as a pixi-sandbox consumer  [DEFERRED]
 ├── .versionrc                      # convco authority, YAML dialect        [done]
@@ -133,7 +133,7 @@ exists is a redirect problem. Adopt `geoquery`'s version wiring: the site reads 
 the one manifest that owns it at build time (`astro.config.mjs` walks up to the root
 `Cargo.toml`), so a release rewrites **zero** documentation lines.
 
-### 1.5 Determination — `tests/fixtures/consumers/` is a first-class deliverable
+### 1.5 Determination — `crates/xtask/fixtures/consumers/` is a first-class deliverable
 
 `pixi-release` renders files into other people's repositories. The only honest test of that is a
 materialised fixture repository per supported shape, copied to a temp dir before mutation,
@@ -414,7 +414,7 @@ shape; only `github-release` is admissible before REL-6.
 | 6 | Ship the `.pixi-release.toml` skeleton; `-core` parses `schema = 1` | M1 / REL-2 |
 | 7 | `prepare` records its touched set into the plan JSON; `cut` refuses anything else | M1 / REL-4 |
 | 8 | `apps/docs/` (Astro + Starlight) + `docs.yml` | M1 |
-| 9 | Renderer + golden templates + `tests/fixtures/consumers/` for all three shapes of §3 | M1 / REL-5 |
+| 9 | Renderer + golden templates + `crates/xtask/fixtures/consumers/` for all three shapes of §3 | M1 / REL-5 |
 | 10 | Marker + stamp + `workflow check` drift gate + `workflow-drift.yml` PR bot | M2 / REL-5 |
 | 11 | Evidence JSON, per-target resume, 5-platform matrix, OIDC publish | M2 / REL-6 |
 | 12 | `consumer-proof.yml`; migrate the owner lane to the pinned N−1 release; shrink `xtask` | M2 / REL-7 |

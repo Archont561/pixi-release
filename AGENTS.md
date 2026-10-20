@@ -15,7 +15,7 @@ Backlog.md is the canonical operating system for delivery work and approved proj
 - Store approved/normative architecture in Backlog decisions and documents, linked to implementation tasks.
 - **One canonical source.** A statement exists in exactly one place: its rule in a decision, its specification in a document, its measurement in the research or spike document that produced it. Cite it by Backlog id and section — never restate it, and never leave a second copy behind.
 - Promote a conclusion into Backlog.md before treating it as a project rule. The test: **if someone would be wrong to contradict it, it is a Backlog document or decision.** On promotion, reduce the `.knowledge/` file to a one-line pointer stub.
-- `.knowledge/` keeps only what has no Backlog home: design history, directions rejected before they reached an ADR, and facts about the working environment. Start at `.knowledge/README.md`.
+- `.knowledge/` is pointer-only. Its former contents (design history, rejected directions, working-environment facts) are Backlog documents `doc-6` and `doc-7`. Start at `.knowledge/README.md`.
 - Tag every claim in a research, spike or environment file ✅ measured or ⚠️ reasoned.
 - Public user documentation belongs under `apps/docs/`.
 

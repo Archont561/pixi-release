@@ -34,7 +34,7 @@ pixi run backlog -- board
 - `tests/fixtures/consumers/` — miniature consumer repositories in the three shapes the renderer must satisfy.
 - `.pixi-release.toml` — authored release policy, reviewed as data. The tool never rewrites it.
 - `backlog/` — canonical tasks, milestones, decisions, and project documents, managed only through Backlog.md.
-- `.knowledge/` — pointers, design history, and working-environment notes. Canonical text lives in `backlog/`; start at `.knowledge/README.md`.
+- `.knowledge/` — pointer stubs only; all content now lives in `backlog/`. Start at `.knowledge/README.md`.
 
 ## Bootstrap
 

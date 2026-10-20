@@ -69,10 +69,14 @@ a second copy that goes stale. Decisions are listed by `backlog decision list`.
 | Decision | Title | Status |
 |---|---|---|
 | `decision-1` | Use Pixi → Bun → Turbo as the only quality-gate entrypoint | accepted |
-| `decision-2` | `pixi-release` is a release controller, not a build system | proposed |
+| `decision-2` | `pixi-release` is a release controller, not a build system | accepted |
 | `decision-3` | Generated workflows are marked, stamped, drift-gated, and never float a production pin | proposed |
-| `decision-4` | The annotated tag is the release evidence anchor | proposed |
+| `decision-4` | The annotated tag is the release evidence anchor | accepted |
 | `decision-5` | No sibling GitHub App — the release push-token slot is consumer-owned | proposed |
+| `decision-6` | Convco is the only version and changelog authority | accepted |
+| `decision-7` | One version per repository for v1 | accepted |
+| `decision-8` | Releases always rebuild binaries; PR builds are not reused | accepted |
+| `decision-9` | Registry targets wait for REL-6 | accepted |
 
 Determinations that are canonical in a document rather than a decision:
 

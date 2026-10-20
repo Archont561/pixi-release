@@ -2,7 +2,7 @@
 id: decision-2
 title: 'pixi-release is a release controller, not a build system'
 date: '2026-10-04 12:32'
-status: proposed
+status: accepted
 ---
 ## Context
 

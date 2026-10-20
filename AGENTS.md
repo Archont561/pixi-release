@@ -43,6 +43,7 @@ Run `pixi run gates` before handing off a change. Scope Turbo work only by forwa
 - Put Git semantics behind `pixi-release-git::GitProtocol`; test policy with `FakeGit` before adding shell integration.
 - Keep `pixi-release` thin: parsing and presentation belong there, domain rules do not.
 - New crates opt into `[lints] workspace = true`; do not restate lint policy.
+- Rust tests use `rstest` fixtures, `proptest` properties and `rstest-bdd` scenarios, written test-first per the `tdd` skill; dummy repositories come from a shared builder (`decision-11`).
 - Tests must prefer behavior and public APIs. External process and real-local-bare-repository tests come after the fake proves policy behavior.
 
 ## Session workflow

@@ -126,6 +126,9 @@ precisely the "second CI command path" `AGENTS.md` forbids.
 
 ### 1.4 Determination — `docs/` → `apps/docs/`, Astro + Starlight
 
+> **Superseded 2026-10-20.** `apps/docs/` was removed. There is no public docs home in v1. The
+> rationale below is kept as history; do not implement it.
+
 Three of four peer repos use `apps/docs/` with Astro + Starlight and publish to Pages. The
 current `docs/` is a Bun script stub. Moving it now is cheap; moving it after the docs site
 exists is a redirect problem. Adopt `geoquery`'s version wiring: the site reads the version from
@@ -192,7 +195,7 @@ only through its own generated output cannot detect that its generator is broken
 | `ci.yml` | owner | **ship first** | one `pixi run <task>` per step; the step list is `pixi run gates` broken out |
 | `relock.yml` | consumer-generated, by `pixi-sandbox` | adopt as-is | do not re-invent; it is byte-identical across 3 peers |
 | `publish-sandbox.yml` | consumer-generated, by `pixi-sandbox` | adopt as-is | add `.pixi-sandbox.toml` |
-| `docs.yml` | owner | after `apps/docs/` | Pages, `paths:`-filtered |
+| `docs.yml` | owner | removed 2026-10-20 (no `apps/docs/`) | — |
 | `auto-release.yml` | owner → product | **the target** | `plan → prepare → cut`; one job, no inline bash |
 | `release.yml` | owner → product | **the target** | `verify → build → publish`; 5-platform matrix |
 | `consumer-proof.yml` | owner | before v1 | render into a clean fixture from the *published* release and run it |
@@ -343,7 +346,7 @@ bot-identity   = "pixi-release[bot]"
 # `git add` list in geoquery/qgis-rs — `cut` stages exactly what `prepare` reports here
 # and refuses anything else.
 [version]
-manifests = ["Cargo.toml", "pixi.toml", "package.json", "apps/docs/package.json"]
+manifests = ["Cargo.toml", "pixi.toml", "package.json"]  # apps/docs removed 2026-10-20
 lockfiles = ["Cargo.lock", "bun.lock", "pixi.lock"]
 changelog = "CHANGELOG.md"
 
@@ -403,38 +406,32 @@ shape; only `github-release` is admissible before REL-6.
 
 ## 5. Sequenced consequences
 
-| # | Action | Milestone |
+Revised 2026-10-20. The task and milestone mapping lives in `doc-9` (Roadmap); this table names the
+tasks each consequence now belongs to.
+
+| # | Action | Milestone / task |
 |---|---|---|
-| 1 | Add `.gitignore`, `.versionrc`, `deny.toml`, `.pixi-sandbox.toml` | M0 / REL-1 |
-| 2 | Write the body of `decision-1` with §1.7's reasoning and obligations | M0 |
-| 3 | Add `.github/workflows/ci.yml` — one `pixi run <task>` per step | M0 / REL-1 |
-| 4 | Generate `relock.yml` + `publish-sandbox.yml` with `pixi-sandbox init` | M0 |
-| 5 | Add `crates/xtask` with `repo_checks/` + release bootstrap, and its deletion trigger | M0 |
+| 1 | Add `.gitignore`, `.versionrc`, `deny.toml` | M0 / REL-1 (done) |
+| 2 | Write the body of `decision-1` | Done (accepted) |
+| 3 | Add `.github/workflows/ci.yml`, one `pixi run <task>` per step | M0 / REL-1 (done); green run on main is REL-10 |
+| 4 | `pixi-sandbox`'s relock and publish workflows | Out of scope for pixi-release; owned by `pixi-sandbox` |
+| 5 | `crates/xtask` with `repo_checks/` and release bootstrap, with its deletion trigger | M0 / REL-1 (done); deletion after REL-7 |
 | 6 | Ship the `.pixi-release.toml` skeleton; `-core` parses `schema = 1` | M1 / REL-2 |
 | 7 | `prepare` records its touched set into the plan JSON; `cut` refuses anything else | M1 / REL-4 |
-| 8 | `apps/docs/` (Astro + Starlight) + `docs.yml` | M1 |
-| 9 | Renderer + golden templates + `crates/xtask/fixtures/consumers/` for all three shapes of §3 | M1 / REL-5 |
-| 10 | Marker + stamp + `workflow check` drift gate + `workflow-drift.yml` PR bot | M2 / REL-5 |
-| 11 | Evidence JSON, per-target resume, 5-platform matrix, OIDC publish | M2 / REL-6 |
+| 8 | `apps/docs/` with `docs.yml` | Removed 2026-10-20; no public-docs task yet |
+| 9 | Renderer, golden templates, and `crates/xtask/fixtures/consumers/` for the three shapes | M1 / REL-5 (blocked by REL-9) |
+| 10 | Marker, stamp, `workflow check` drift gate, `workflow-drift.yml` PR bot | M2 / REL-12 |
+| 11 | Evidence JSON, per-target resume, five-platform matrix, OIDC publish | M2 / REL-6 (needs REL-11 manifest schema) |
 | 12 | `consumer-proof.yml`; migrate the owner lane to the pinned N−1 release; shrink `xtask` | M2 / REL-7 |
+| 13 | Convco changelog generation | M1 / REL-8 |
 
 ---
 
 ## 6. Open questions for the maintainer
 
-1. **Consumer entrypoint.** `geoquery` and `qgis-rs` pin `Archont561/pixi-sandbox/setup@<sha>`,
-   but no `setup/action.yml` exists at `pixi-sandbox` HEAD. Should `pixi-release` ship a
-   composite `setup/action.yml`, rely on `pixi global install` from a package channel, or both?
-   This decides whether rendered workflows contain a `uses:` or a bootstrap step.
-2. **Scope of the renderer.** Does `pixi-release` claim `ci.yml` and `docs.yml` (the remaining
-   divergent hand-written workflows), or stay strictly in the release lane? §2.2 proposes
-   claiming `ci` because the one-line-per-step rule is only enforceable if the renderer owns the
-   file — but that is a materially larger product.
-3. **Relationship to `pixi-sandbox`.** Both tools render workflows into the same
-   `.github/workflows/` directory, both will carry ownership markers, both will want a drift
-   PR bot. Do they share a marker/stamp convention and a single upgrade PR, or does each
-   consumer repository get two bots?
-4. **`pixi-sandbox`'s `xtask` as the seed.** `prepare_release.rs`, `commit_release.rs`,
-   `release_assets.rs`, `conda_platforms.rs`, `workflow.rs` and `repo_checks/` are already
-   tested against real git and bare remotes. Is `pixi-release` v0.1.0 a generalisation of that
-   code (fastest path, proven behaviour), or a clean-room implementation against `doc-1`?
+Answered 2026-10-20 in `decision-10`. Tracked by REL-9, which is done.
+
+1. **Consumer entrypoint.** Answered: `pixi global install` from `https://prefix.dev/channels/@archont561/archont561`. No composite action in v1.
+2. **Scope of the renderer.** Answered: release lane only. `ci.yml` and `docs.yml` stay hand-written.
+3. **Relationship to `pixi-sandbox`.** Answered: `pixi-sandbox` owns `publish-sandbox.yml` and `relock.yml`; `pixi-release` owns `release.yml` and `auto-release.yml`. Distinct markers and stamps; separate drift bots.
+4. **`pixi-sandbox`'s `xtask` as the seed.** Answered: clean-room against `doc-1`.

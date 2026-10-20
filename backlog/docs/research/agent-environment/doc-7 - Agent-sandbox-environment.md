@@ -48,3 +48,22 @@ PR comment, or check output.
   run id before trusting `status: completed`.
 - `backlog decision` has **no `update` subcommand**, only `create` and `list`. Decision and document
   bodies are authored in the file after CLI creation.
+
+## Update 2026-10-20 (measured)
+
+- ✅ Bun reaches the sandbox through npm: `@oven/bun-linux-x64` installs locally. The repo pins
+  `bun@1.3.11` (`pixi.toml`: `>=1.3.11,<1.4`), and that version was installed and used. The
+  `1.4.3` build is outside the pin and was not used.
+- ✅ `bun install --frozen-lockfile`, `bun test crates/xtask/scripts` (3 pass), `bun run typecheck`
+  and `bun run build` pass. Pixi is still absent, so these run through the underlying scripts
+  directly, not through `pixi run`.
+- ✅ `static.rust-lang.org` is unreachable. Rust cannot be installed locally, so `cargo` is not
+  available and no Rust test has been compiled.
+- ✅ PyPI is reachable, so PyYAML installs in a local venv. All 10 TOML and 8 YAML files in the
+  repository parse. This checks syntax only.
+- ✅ `Archont561/pixi-sandbox` has no session branch. Its branches are `main`, `sandbox/developer-linux-64`,
+  `arena/eb67ebe1-pixi-sandbox` and dependabot branches.
+- ✅ GitHub Actions does not start jobs on this account. Run `39473511171` on `main` (`97f8030`)
+  failed with "The job was not started because recent account payments have failed or your
+  spending limit needs to be increased." Every criterion that needs a green run stays open until
+  billing is restored.

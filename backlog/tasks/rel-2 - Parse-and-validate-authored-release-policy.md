@@ -4,6 +4,7 @@ title: Parse and validate authored release policy
 status: To Do
 assignee: []
 created_date: '2026-10-01 00:27'
+updated_date: '2026-10-20 20:11'
 labels:
   - release
   - architecture
@@ -28,6 +29,8 @@ Load `.pixi-release.toml` into typed configuration and reject ambiguous or unsaf
 - [ ] #1 Configuration validation names the exact invalid key or incompatible authority choice.
 - [ ] #2 Convco mode records the Convco version and configuration hashes as plan evidence.
 - [ ] #3 Native SemVer behavior is rejected while active Convco policy is configured.
+- [ ] #4 Proven by a green gates run on the merge commit that covers this task's tests
+- [ ] #5 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->
 
 ## Definition of Done

@@ -403,24 +403,30 @@ shape; only `github-release` is admissible before REL-6.
 
 ## 5. Sequenced consequences
 
-| # | Action | Milestone |
+Revised 2026-10-20. The task and milestone mapping lives in `doc-9` (Roadmap); this table names the
+tasks each consequence now belongs to.
+
+| # | Action | Milestone / task |
 |---|---|---|
-| 1 | Add `.gitignore`, `.versionrc`, `deny.toml`, `.pixi-sandbox.toml` | M0 / REL-1 |
-| 2 | Write the body of `decision-1` with §1.7's reasoning and obligations | M0 |
-| 3 | Add `.github/workflows/ci.yml` — one `pixi run <task>` per step | M0 / REL-1 |
-| 4 | Generate `relock.yml` + `publish-sandbox.yml` with `pixi-sandbox init` | M0 |
-| 5 | Add `crates/xtask` with `repo_checks/` + release bootstrap, and its deletion trigger | M0 |
+| 1 | Add `.gitignore`, `.versionrc`, `deny.toml` | M0 / REL-1 (done) |
+| 2 | Write the body of `decision-1` | Done (accepted) |
+| 3 | Add `.github/workflows/ci.yml`, one `pixi run <task>` per step | M0 / REL-1 (done); green run on main is REL-10 |
+| 4 | `pixi-sandbox`'s relock and publish workflows | Out of scope for pixi-release; owned by `pixi-sandbox` |
+| 5 | `crates/xtask` with `repo_checks/` and release bootstrap, with its deletion trigger | M0 / REL-1 (done); deletion after REL-7 |
 | 6 | Ship the `.pixi-release.toml` skeleton; `-core` parses `schema = 1` | M1 / REL-2 |
 | 7 | `prepare` records its touched set into the plan JSON; `cut` refuses anything else | M1 / REL-4 |
-| 8 | `apps/docs/` (Astro + Starlight) + `docs.yml` | M1 |
-| 9 | Renderer + golden templates + `crates/xtask/fixtures/consumers/` for all three shapes of §3 | M1 / REL-5 |
-| 10 | Marker + stamp + `workflow check` drift gate + `workflow-drift.yml` PR bot | M2 / REL-5 |
-| 11 | Evidence JSON, per-target resume, 5-platform matrix, OIDC publish | M2 / REL-6 |
+| 8 | `apps/docs/` with `docs.yml` | Removed 2026-10-20; no public-docs task yet |
+| 9 | Renderer, golden templates, and `crates/xtask/fixtures/consumers/` for the three shapes | M1 / REL-5 (blocked by REL-9) |
+| 10 | Marker, stamp, `workflow check` drift gate, `workflow-drift.yml` PR bot | M2 / REL-12 |
+| 11 | Evidence JSON, per-target resume, five-platform matrix, OIDC publish | M2 / REL-6 (needs REL-11 manifest schema) |
 | 12 | `consumer-proof.yml`; migrate the owner lane to the pinned N−1 release; shrink `xtask` | M2 / REL-7 |
+| 13 | Convco changelog generation | M1 / REL-8 |
 
 ---
 
 ## 6. Open questions for the maintainer
+
+Tracked by REL-9. These block M1 sizing until answered.
 
 1. **Consumer entrypoint.** `geoquery` and `qgis-rs` pin `Archont561/pixi-sandbox/setup@<sha>`,
    but no `setup/action.yml` exists at `pixi-sandbox` HEAD. Should `pixi-release` ship a

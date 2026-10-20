@@ -7,57 +7,76 @@ created_date: '2026-10-20 19:06'
 
 ## Status
 
-Proposal, written 2026-10-20 to replace the milestone outline in `doc-3` §5. It changes no task
-and no milestone file: the Backlog CLI cannot edit a milestone description. The versions below
-are expectations. Convco computes the real version from commit history (`decision-6`).
+Adopted 2026-10-20. The task and milestone changes below are applied in Backlog. The versions are
+expectations. Convco computes the real version from commit history (`decision-6`).
+
+Known limit: the Backlog CLI cannot edit a milestone description. The descriptions of m-0, m-1 and
+m-2 therefore still show the older outline. This doc and the task files are authoritative where they
+differ. m-3 was added with the current description.
 
 ## Version mapping
 
-| Version | Milestone | Exit condition |
-|---|---|---|
-| v0.1.0 | M0 | `pixi run ci` green from a fresh clone, verified on `main` (not yet proven) |
-| v0.2.0 | M1 | A dry run proves why a tag may or may not be cut, without touching Git state |
-| v0.3.0 | M2 (publish part) | Every required target has deterministic evidence and a recoverable publication path |
-| v1.0.0 | M2 (self-host part) | The N−1 self-release is verified and the consumer proof passes (REL-7) |
+| Version | Milestone | Exit condition | Tasks |
+|---|---|---|---|
+| v0.1.0 | M0 | `pixi run ci` green from a fresh clone, verified on `main` | REL-1 (done), REL-10 |
+| v0.2.0 | M1 | A dry run proves why a tag may or may not be cut, without touching Git state | REL-2, REL-3, REL-4, REL-5, REL-8, REL-9 |
+| v0.3.0 | M2 (publish part) | Every required target has deterministic evidence and a recoverable publication path | REL-6, REL-11, REL-12 |
+| v1.0.0 | M2 (self-host part) | The N−1 self-release is verified and the consumer proof passes | REL-7 |
 
 Only `github-release` is an admissible target before REL-6 is done (`decision-9`). The first
-tagged release that exercises a registry target is after that.
+tagged release that exercises a registry target comes after that.
+
+## Task mapping
+
+| Task | Milestone | Depends on | Scope |
+|---|---|---|---|
+| REL-1 | M0 | — | Scaffold the reproducible Pixi–Bun–Turbo repository (done) |
+| REL-10 | M0 | REL-1 | Prove M0 with a green run of `pixi run ci` on `main` |
+| REL-2 | M1 | REL-1 | Parse and validate the authored release policy |
+| REL-3 | M1 | REL-2 | Produce immutable deterministic release plans |
+| REL-4 | M1 | REL-3 | Prepare and cut behaviour, with the touched-set refusal |
+| REL-8 | M1 | REL-2 | Generate the changelog through Convco (`decision-6`) |
+| REL-9 | M1 | — | Answer the open questions in `doc-3` §6 |
+| REL-5 | M1 | REL-3, REL-9 | Renderer only: templates, golden fixtures, the three consumer shapes |
+| REL-11 | M2 | REL-4 | Define the release manifest schema (`doc-8` base) |
+| REL-12 | M2 | REL-5 | Drift gate: markers, stamps, `workflow check`, PR bot |
+| REL-6 | M2 | REL-4, REL-11 | Evidence JSON, per-target resume, five-platform matrix, OIDC publish |
+| REL-7 | M2 | REL-5, REL-6 | Dogfood sandbox publication and verified N−1 self-release |
+
+Each task that has tests gained the criterion "Proven by a green gates run on the merge commit
+that covers this task's tests". REL-7 also requires a verified N−1 self-release.
 
 ## Revisions to the existing milestones
 
-- **M0.** Keep the scope. Its exit condition has not been demonstrated: CI has never completed
-  green on this branch. Close M0 only with a green run, not with the task alone.
-- **M1.** Add REL-5's renderer half (templates, golden fixtures, the three consumer shapes).
-  Add changelog generation through Convco (`decision-6`).
-- **M2.** Take REL-5's drift gate (markers, stamps, `workflow check`) and REL-6 (evidence JSON,
-  per-target resume, the five-platform matrix, OIDC publish). Keep REL-7 as the last item.
-- **REL-5 placement.** `doc-3` §5 puts renderer work in M1 (row 9) and drift work in M2
-  (row 10). Split REL-5 into two tasks, one per milestone, rather than keeping one task that
-  spans both.
+- **M0.** Scope unchanged. The exit condition is not yet demonstrated, because CI has not completed
+  green on this branch. M0 closes with REL-10, not with REL-1 alone.
+- **M1.** Renderer work (REL-5) and changelog generation through Convco (REL-8) are included. The
+  open questions (REL-9) must be answered first.
+- **M2.** Evidence and publication (REL-6), the manifest schema (REL-11) and the drift gate
+  (REL-12). REL-7 stays last.
+- **REL-5 placement.** The renderer (M1) and the drift gate (M2) are split into REL-5 and REL-12.
+  Each now sits in its own milestone.
 
 ## Scope outside the milestones
 
 These are real work, deliberately not in v1:
 
-- **Release manifest and presentation sidecar** (`doc-8`). Decide the manifest schema before
-  REL-6 starts, because REL-6's evidence JSON is the natural base for it. The sidecar itself
-  is post-v1.
+- **Presentation sidecar** (`doc-8`). Post-v1, tracked under m-3. The manifest schema it needs is
+  REL-11, which is in M2.
 - **Per-package versions** (`decision-7`). Needs its own decision before any monorepo can use
-  the controller.
+  the controller. Tracked under m-3.
 - **Each further registry target** (`decision-9`). Each one needs its manifest and resume
-  behaviour specified and tested first.
-- **Changesets**. Out of scope, because a second authority is not allowed (`decision-6`).
+  behaviour specified and tested first. Tracked under m-3.
+- **Changesets.** Out of scope, because a second version authority is not allowed (`decision-6`).
 
-## Unanswered questions that block M1
+## Open questions
 
-From `doc-3` §6, still open: the consumer entrypoint (composite action or package install), whether
-the renderer owns `ci.yml` and `docs.yml`, the relationship to `pixi-sandbox`'s markers and
-bots, and whether to seed from `pixi-sandbox`'s `xtask`. M1 cannot size its tasks until these
-are answered.
+The questions from `doc-3` §6 are tracked as REL-9. REL-5 is blocked until they are answered.
+They cover the consumer entrypoint (composite action or package install), whether the renderer
+owns `ci.yml` and `docs.yml`, the relationship to `pixi-sandbox`'s markers and bots, and whether
+to seed from `pixi-sandbox`'s `xtask`.
 
-## Corrections to existing documents
+## Corrections made
 
-- `doc-3` §5 row 8 plans `apps/docs/`, which was removed on 2026-10-20.
-- `doc-3` §5 row 4 (`pixi-sandbox init`) has no task in the Backlog.
-- REL-2 to REL-7 each have three acceptance criteria and no proof of completion beyond their
-  descriptions. Each one needs a checkable criterion before its milestone can close.
+- `doc-3` §5 row 8 (`apps/docs/`) was removed. Row 4 (`pixi-sandbox init`) now names its owner.
+- REL-2 to REL-7 each gained a checkable proof criterion, so their milestones can close.

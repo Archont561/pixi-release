@@ -7,7 +7,7 @@
   "postCreateCommand": "pixi run setup",
   "customizations": {
     "vscode": {
-      "extensions": ["rust-lang.rust-analyzer", "biomejs.biome", "tamasfe.even-better-toml"],
+      "extensions": ["rust-lang.rust-analyzer", "tamasfe.even-better-toml"],
       "settings": {
         "editor.formatOnSave": true,
         "rust-analyzer.cargo.allTargets": true

@@ -32,22 +32,35 @@ jobs:
           environments: default
           locked: true
 
+      - name: Install coverage tool
+        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        with:
+          tool: cargo-tarpaulin
+
       - name: Cache Cargo
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: . -> target
 
-      # One command surface (decision-1): every step below is one `pixi run <task>`, and the
-      # set of them is exactly `pixi run ci`. They are listed separately so a red run names the
-      # gate that failed in the job summary, without anyone needing to open the log.
+      # One command surface (decision-1): every step below is one `pixi run <task>`, plus the
+      # coverage tool install and the upload action. They are listed separately so a red run names
+      # the gate that failed in the job summary, without anyone needing to open the log.
       - name: Lint
         run: pixi run lint
 
       - name: Typecheck
         run: pixi run typecheck
 
-      - name: Test
-        run: pixi run test
+      # Coverage runs the test suites with instrumentation, so tests are not run twice.
+      - name: Test with coverage
+        run: pixi run coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: coverage/lcov.info,target/coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
       - name: Lint workflows
         run: pixi run lint-actions

@@ -2,10 +2,6 @@
 pre-commit:
   parallel: true
   commands:
-    format-js:
-      glob: "*.{js,jsx,ts,tsx,json,jsonc}"
-      run: pixi run fmt -- --filter=//
-      stage_fixed: true
     format-rust:
       glob: "crates/**/*.rs"
       run: pixi run fmt -- --filter=@pixi-release/rust

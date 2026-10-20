@@ -22,7 +22,7 @@ Run in `Archont561/pixi-release` on 2026-10-04, branch `arena/01a10687-pixi-rele
 Subject: a throwaway **draft** release `v0.0.0-probe`, numeric id **`403008034`**, created with
 `gh api --method POST /repos/Archont561/pixi-release/releases` and `draft: true`. Asset upload
 was attempted 4× and failed every time against `uploads.github.com`
-(`.knowledge/research/agent-environment.md`), so the probes ran against the release object
+(`backlog/docs/research/agent-environment/doc-7`), so the probes ran against the release object
 itself — which is what the visibility question is about.
 
 **Attempt 1 — commit `5ceb34c`, run `37202029536`. Discarded.** Three jobs at differing
@@ -99,7 +99,7 @@ Both findings changed `doc-2` rather than merely constraining it.
 ## Environment constraints that shaped the method
 
 Not product knowledge, and recorded separately so the next spike does not rediscover them:
-`.knowledge/research/agent-environment.md`.
+`backlog/docs/research/agent-environment/doc-7`.
 
 ## Disposal
 

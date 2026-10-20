@@ -61,7 +61,7 @@ fn run_checks(root: &Path) -> i32 {
     1
 }
 
-/// The workspace contract. `scripts/verify-workspace.ts` asserts the JS half; this asserts the
+/// The workspace contract. `crates/xtask/scripts/verify-workspace.ts` asserts the JS half; this asserts the
 /// files a release depends on existing at all.
 fn required_files(root: &Path, findings: &mut Vec<String>) {
     const REQUIRED: &[&str] = &[
@@ -69,14 +69,11 @@ fn required_files(root: &Path, findings: &mut Vec<String>) {
         "pixi.toml",
         "package.json",
         "turbo.json",
-        "biome.json",
         "lefthook.yml",
         ".gitignore",
         ".versionrc",
-        ".pixi-release.toml",
         "deny.toml",
         "crates/package.json",
-        "apps/docs/package.json",
         "CHANGELOG.md",
     ];
     for relative in REQUIRED {
@@ -87,14 +84,13 @@ fn required_files(root: &Path, findings: &mut Vec<String>) {
 }
 
 /// Every manifest carrying a version literal must agree. This is the invariant that
-/// `.pixi-release.toml`'s `[version].manifests` list will own once `prepare` exists; until
-/// then it is checked, so the two cannot drift before the product can enforce it.
+/// the authored policy will own once `prepare` exists (doc-3 §4); until then it is checked, so
+/// the manifests cannot drift before the product can enforce it.
 fn versions_agree(root: &Path, findings: &mut Vec<String>) {
-    let sources: [(&str, VersionReader); 4] = [
+    let sources: [(&str, VersionReader); 3] = [
         ("Cargo.toml", workspace_package_version),
         ("pixi.toml", toml_top_level_version),
         ("package.json", json_version),
-        ("apps/docs/package.json", json_version),
     ];
 
     let mut seen: Vec<(&str, String)> = Vec::new();

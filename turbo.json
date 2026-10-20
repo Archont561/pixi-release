@@ -7,8 +7,7 @@
     "pixi.toml",
     "pixi.lock",
     "Cargo.toml",
-    "Cargo.lock",
-    "biome.json"
+    "Cargo.lock"
   ],
   "globalEnv": ["PIXI_RELEASE_VERSION"],
   "tasks": {
@@ -27,7 +26,16 @@
     "lint": {
       "outputs": []
     },
+    "coverage": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "cache": false
+    },
     "fmt": {
+      "cache": false
+    },
+    "//#coverage": {
+      "outputs": [],
       "cache": false
     },
     "//#build": {
@@ -38,12 +46,6 @@
     },
     "//#typecheck": {
       "outputs": []
-    },
-    "//#lint": {
-      "inputs": ["**/*.{js,jsx,ts,tsx,json,jsonc}", "biome.json"]
-    },
-    "//#fmt": {
-      "cache": false
     }
   }
 }

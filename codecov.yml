@@ -1,0 +1,35 @@
+# Codecov configuration for pixi-release. Coverage is uploaded only by a CI job that runs the
+# Rust and TypeScript suites with instrumentation; this file governs how the reports are judged.
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: false
+
+# Only product code is judged. Owner-lane automation, fixtures, generated workflows, docs, and
+# Backlog/agent material are not product behaviour.
+ignore:
+  - "crates/xtask/**"
+  - "crates/*/tests/**"
+  - "backlog/**"
+  - ".agents/**"
+  - "**/dist/**"
+  - "**/target/**"
+  - "**/*.feature"
+  - "**/*.tmpl"

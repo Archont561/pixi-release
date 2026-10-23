@@ -3,6 +3,7 @@ id: doc-7
 title: Agent sandbox environment
 type: other
 created_date: '2026-10-20 17:55'
+updated_date: '2026-10-23 17:48'
 ---
 ## Purpose
 
@@ -67,3 +68,37 @@ PR comment, or check output.
   failed with "The job was not started because recent account payments have failed or your
   spending limit needs to be increased." Every criterion that needs a green run stays open until
   billing is restored.
+
+## Update 2026-10-23 — restoring the toolchain from the published pack (✅ measured)
+
+The absence of `pixi`, `bun` and `cargo` is no longer a hard limit. This repository publishes its
+own development environment to the orphan branch `sandbox/developer-linux-64`, and that branch is a
+git branch, so it is reachable from here even when conda-forge, `prefix.dev` and
+`static.rust-lang.org` are not.
+
+Measured, in order:
+
+```bash
+git clone --depth 1 --single-branch -b sandbox/developer-linux-64 \
+  https://github.com/Archont561/pixi-release.git /tmp/pack      # 907 MiB, ~10 s
+/tmp/pack/.pixi-sandbox/tools/linux-64/pixi-sandbox \
+  doctor --branch-location /tmp/pack --verify                   # 476.3 MiB, 0 failures
+/tmp/pack/.pixi-sandbox/tools/linux-64/pixi-sandbox restore \
+  --branch-location /tmp/pack --output-path <scratch clone> --force   # ~39 s
+pixi install --frozen --offline                                 # no-op
+```
+
+Results: `pixi 0.83.0`, `pixi-sandbox 0.8.0`, `cargo 1.98.1` and `rustc` all work afterwards. Restore
+installs `pixi` and `pixi-sandbox` into `~/.local/bin`; they are not on `PATH` in an already-running
+shell.
+
+**What this does and does not unlock.** `rustfmt`, `actionlint` and the Bun-level workspace checks
+now run locally. `cargo clippy`, `cargo check` and `cargo test` still do **not**: `index.crates.io`,
+`static.crates.io` and `crates.io` all fail (HTTP 000), and the dependencies are not vendored, so
+offline resolution stops at `no matching package named proptest found`. The bundle sets
+`cargo_vendor = false` deliberately (`decision-8` rebuilds releases on their own runners), so a
+local Rust build needs either network to crates.io or a vendored bundle. CI remains the authority
+for the Rust gates.
+
+**Size caution.** An unpacked environment is ~1.8 GB. Restore into `/tmp` or another path outside
+the repository; a restore inside the workspace would swamp the session snapshot.

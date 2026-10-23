@@ -9,7 +9,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::config::{ConvcoEvidence, ReleasePolicy};
 
@@ -20,7 +20,7 @@ pub const PLAN_SCHEMA: u32 = 1;
 pub const TOOL_NAME: &str = "pixi-release";
 
 /// How a version was chosen.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Bump {
     /// Let the authority decide from the commits since the last tag.
@@ -65,7 +65,7 @@ impl fmt::Display for Bump {
 }
 
 /// A semantic version, validated once so every later phase can trust it.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct Version(String);
 
@@ -142,7 +142,7 @@ fn valid_identifiers(suffix: &str) -> bool {
 }
 
 /// The commit a plan was derived from, and whether the worktree was clean at the time.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct SourceRevision {
     commit: String,
     clean: bool,
@@ -183,7 +183,7 @@ impl SourceRevision {
 }
 
 /// The digest of the authored policy a plan was built under (`decision-3`).
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct PolicyDigest(String);
 
@@ -218,7 +218,7 @@ impl PolicyDigest {
 }
 
 /// One publication target in a plan.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct TargetPlan {
     name: String,
     required: bool,
@@ -311,7 +311,7 @@ pub struct PlanInputs {
 }
 
 /// A canonical, reviewable release proposal.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Plan {
     schema: u32,
     version: Version,
@@ -322,10 +322,13 @@ pub struct Plan {
     source: SourceRevision,
     policy: PolicyRef,
     targets: Vec<TargetPlan>,
+    /// Paths `prepare` reported it would change, recorded back into the plan (`doc-3` §5.7).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    touched: Vec<String>,
     tool: Tool,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 enum Authority {
     Convco {
@@ -337,14 +340,14 @@ enum Authority {
     },
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 struct PolicyRef {
     digest: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 struct Tool {
-    name: &'static str,
+    name: String,
     version: String,
 }
 
@@ -411,10 +414,39 @@ impl Plan {
             source: inputs.source,
             policy: PolicyRef { digest: digest.0 },
             targets,
+            touched: Vec::new(),
             tool: Tool {
-                name: TOOL_NAME,
+                name: TOOL_NAME.to_owned(),
                 version: inputs.tool_version,
             },
+        })
+    }
+
+    /// Reads a plan back from its canonical JSON, re-validating every checked field.
+    ///
+    /// # Errors
+    ///
+    /// Refuses JSON that is not a plan, and a version, revision or digest that would not have been
+    /// accepted when the plan was proposed — a plan file is evidence, not a trusted input.
+    pub fn from_json(text: &str) -> Result<Self, PlanError> {
+        let plan: Self = serde_json::from_str(text)
+            .map_err(|error| PlanError::new("plan", error.to_string()))?;
+        let version = Version::parse(plan.version.as_str())?;
+        let source = SourceRevision::new(plan.source.commit.clone(), plan.source.clean)?;
+        PolicyDigest::new(plan.policy.digest.clone())?;
+        if plan.tool.version.trim().is_empty() {
+            return Err(PlanError::new("tool.version", "a plan names its author"));
+        }
+        if plan.tag.is_empty() {
+            return Err(PlanError::new(
+                "tag",
+                "a plan carries the tag it will create",
+            ));
+        }
+        Ok(Self {
+            version,
+            source,
+            ..plan
         })
     }
 
@@ -440,6 +472,49 @@ impl Plan {
     #[must_use]
     pub fn targets(&self) -> &[TargetPlan] {
         &self.targets
+    }
+
+    /// Paths the plan records as the only ones `cut` may stage.
+    #[must_use]
+    pub fn touched(&self) -> &[String] {
+        &self.touched
+    }
+
+    /// Records the touched set `prepare` reported, sorted and deduplicated.
+    ///
+    /// The plan is immutable once cut, so this consumes and returns: a caller cannot quietly edit
+    /// the evidence a later phase already holds.
+    #[must_use]
+    pub fn with_touched<I>(mut self, paths: I) -> Self
+    where
+        I: IntoIterator<Item = String>,
+    {
+        let mut touched: Vec<String> = paths.into_iter().collect();
+        touched.sort();
+        touched.dedup();
+        self.touched = touched;
+        self
+    }
+
+    /// The tool version that produced the plan.
+    #[must_use]
+    pub fn tool_version(&self) -> &str {
+        &self.tool.version
+    }
+
+    /// The `sha256:` digest of this plan's canonical JSON, written into the tag (`decision-4`).
+    #[must_use]
+    pub fn digest(&self) -> String {
+        use sha2::{Digest as _, Sha256};
+        let digest = Sha256::digest(self.to_json().as_bytes());
+        let hex: String = digest
+            .iter()
+            .fold(String::with_capacity(64), |mut acc, byte| {
+                use std::fmt::Write as _;
+                let _ = write!(acc, "{byte:02x}");
+                acc
+            });
+        format!("sha256:{hex}")
     }
 
     /// The revision the plan was derived from.

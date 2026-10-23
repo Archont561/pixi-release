@@ -20,6 +20,10 @@ serde = { workspace = true, features = ["derive"] }
 toml = { workspace = true }
 # A plan is canonical JSON (`doc-2` §2.3); serialisation is domain behaviour, not presentation.
 serde_json = { workspace = true }
+# The Git boundary is a pure trait plus its fake; `cut` validates through it, never a subprocess.
+pixi-release-git.workspace = true
+# Plan and policy digests are sha256 (`decision-3`, `decision-4`).
+sha2.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true

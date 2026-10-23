@@ -1,7 +1,9 @@
 //! Release-domain types with no process, filesystem, or network dependency.
 
 pub mod config;
+pub mod cut;
 pub mod plan;
+pub mod prepare;
 
 /// The irreversible-ordering boundary for a release run.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

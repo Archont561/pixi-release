@@ -867,12 +867,14 @@ dependencies = [
 name = "pixi-release-core"
 version = "0.1.0"
 dependencies = [
+ "pixi-release-git",
  "proptest",
  "rstest",
  "rstest-bdd",
  "rstest-bdd-macros",
  "serde",
  "serde_json",
+ "sha2",
  "toml",
 ]
 

@@ -1,10 +1,10 @@
 ---
 id: REL-4
 title: Enforce prepare and cut Git safety policy
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-01 00:28'
-updated_date: '2026-10-23 21:06'
+updated_date: '2026-10-23 21:13'
 labels:
   - release
   - testing
@@ -29,7 +29,7 @@ Use the semantic Git port to implement dry-run preparation and a separate cut op
 - [x] #1 prepare --dry-run records intended changes and leaves the worktree untouched.
 - [x] #2 cut refuses dirty trees, wrong branches, mismatched tags, stale plans, and failed gates.
 - [x] #3 cut never invokes publication targets.
-- [ ] #4 Proven by a green gates run on the merge commit that covers this task's tests
+- [x] #4 Proven by a green gates run on the merge commit that covers this task's tests
 - [x] #5 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->
 
@@ -60,3 +60,9 @@ Measured: `pixi run --frozen gates` exit 0, 16 test binaries, 100 tests
 (core `cut` 17, core `prepare` 5, git `local_repo` 4, CLI 14). The local-bare-repository test
 proves the tag lands on the commit and both pushes reach the bare remote.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+`prepare --dry-run` reports the version literals it would write; `cut` validates in a fixed order (branch, plan source, policy digest, recorded paths, worktree, tag, configured gates) before staging exactly the recorded paths, committing `chore(release): <tag>`, tagging with evidence trailers, and pushing only on request. The Git port has no publication operation, so `cut` cannot publish. Proven by a local bare-remote test and 100 tests on the merge commit.
+<!-- SECTION:FINAL_SUMMARY:END -->

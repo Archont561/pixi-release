@@ -55,12 +55,15 @@ jobs:
       - name: Test with coverage
         run: pixi run coverage
 
+      # Strict on purpose: the criterion is that the upload succeeds, and a step that swallows
+      # its own failure cannot show that. A public repository uploads tokenless; the token is
+      # used only when the secret exists.
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: coverage/lcov.info,target/coverage/lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+          fail_ci_if_error: true
 
       - name: Lint workflows
         run: pixi run lint-actions

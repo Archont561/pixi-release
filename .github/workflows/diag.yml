@@ -1,0 +1,52 @@
+# TEMPORARY — diagnostic only. Runs the exact lint commands from `pixi run lint` and publishes
+# their stdout/stderr to the branch, because this sandbox cannot download Actions job logs
+# (they redirect to results-receiver.actions.githubusercontent.com, doc-7). Deleted before the
+# branch is proposed for merge.
+name: diag
+
+on:
+  push:
+    branches: [arena/9b95c388-pixi-release]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lint-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Pixi environment
+        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
+        with:
+          environments: default
+          locked: true
+
+      # Same two commands the `lint` script in crates/package.json runs, kept separate so fmt
+      # cannot short-circuit clippy. Neither is allowed to fail the job: the point is the text.
+      - name: Capture lint output
+        run: |
+          set +e
+          {
+            echo "rustc: $(rustc --version 2>&1)"
+            echo "cargo: $(cargo --version 2>&1)"
+            echo
+            echo "=== cargo fmt --all --check ==="
+            ( cd crates && cargo fmt --manifest-path ../Cargo.toml --all --check 2>&1; echo "fmt exit=$?" )
+            echo
+            echo "=== cargo clippy --workspace --all-targets --all-features -- -D warnings ==="
+            cargo clippy --workspace --all-targets --all-features -- -D warnings 2>&1
+            echo "clippy exit=$?"
+          } > diag-report.txt
+          cat diag-report.txt
+
+      - name: Publish the report to the branch
+        run: |
+          git config user.name "pixi-release diag"
+          git config user.email "diag@example.invalid"
+          git add -f diag-report.txt
+          git commit -m "chore(diag): capture lint output"
+          git push

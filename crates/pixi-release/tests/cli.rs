@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use rstest::{fixture, rstest};
@@ -278,5 +278,283 @@ fn plan_reports_a_missing_policy(cli_bin: &str) {
     assert!(
         String::from_utf8_lossy(&output.stderr).contains(".pixi-release.toml"),
         "the missing path must be named"
+    );
+}
+
+/// A policy with no gate list, so the CLI tests exercise the release logic rather than `pixi`.
+const UNGATED_POLICY: &str = r#"
+schema = 1
+
+[project]
+version-source = "convco"
+tag-format     = "v{version}"
+
+[version]
+manifests = ["Cargo.toml"]
+lockfiles = ["Cargo.lock"]
+changelog = "CHANGELOG.md"
+
+[[target]]
+name     = "github-release"
+required = true
+"#;
+
+/// Prepares a repository carrying the ungated policy and the three files the plan touches.
+fn release_repo() -> (tempfile::TempDir, PathBuf) {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let scratch = tempfile::tempdir().expect("scratch dir");
+    std::fs::write(dir.path().join(".pixi-release.toml"), UNGATED_POLICY).expect("policy");
+    std::fs::write(
+        dir.path().join("Cargo.toml"),
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
+    )
+    .expect("manifest");
+    std::fs::write(dir.path().join("Cargo.lock"), "# lock\n").expect("lockfile");
+    std::fs::write(dir.path().join("CHANGELOG.md"), "# Changelog\n").expect("changelog");
+    init_repo(dir.path());
+    (scratch, dir.keep())
+}
+
+/// Writes a plan for the prepared repository, returning the path.
+fn write_plan(cli_bin: &str, repo: &Path, out: &Path) -> String {
+    let output = Command::new(cli_bin)
+        .args([
+            "plan",
+            "--version",
+            "0.2.0",
+            "--out",
+            out.to_str().expect("utf-8 path"),
+        ])
+        .current_dir(repo)
+        .output()
+        .expect("binary should run");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    std::fs::read_to_string(out).expect("plan file")
+}
+
+/// AC#1: `prepare --dry-run` reports the intended change and leaves the worktree untouched.
+#[rstest]
+fn prepare_dry_run_reports_edits_without_touching_the_worktree(cli_bin: &str) {
+    let (scratch, repo) = release_repo();
+    let plan = scratch.path().join("plan.json");
+    let recorded = scratch.path().join("prepared.json");
+    write_plan(cli_bin, &repo, &plan);
+    let before = std::fs::read_to_string(repo.join("Cargo.toml")).expect("manifest");
+    let status_before = git(&repo, &["status", "--porcelain"]);
+
+    let output = Command::new(cli_bin)
+        .args([
+            "prepare",
+            "--plan",
+            plan.to_str().expect("utf-8 path"),
+            "--dry-run",
+            "--out",
+            recorded.to_str().expect("utf-8 path"),
+        ])
+        .current_dir(&repo)
+        .output()
+        .expect("binary should run");
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("would update Cargo.toml: 0.1.0 -> 0.2.0"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("worktree untouched"), "{stdout}");
+    assert_eq!(
+        std::fs::read_to_string(repo.join("Cargo.toml")).expect("manifest"),
+        before,
+        "the manifest was not rewritten"
+    );
+    assert_eq!(git(&repo, &["status", "--porcelain"]), status_before);
+    let recorded_text = std::fs::read_to_string(&recorded).expect("recorded plan");
+    assert!(recorded_text.contains("\"touched\""), "{recorded_text}");
+}
+
+/// `prepare` without `--dry-run` is refused, because writing manifests does not exist yet.
+#[rstest]
+fn prepare_without_dry_run_is_refused(cli_bin: &str) {
+    let (scratch, repo) = release_repo();
+    let plan = scratch.path().join("plan.json");
+    write_plan(cli_bin, &repo, &plan);
+
+    let output = Command::new(cli_bin)
+        .args(["prepare", "--plan", plan.to_str().expect("utf-8 path")])
+        .current_dir(&repo)
+        .output()
+        .expect("binary should run");
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("--dry-run"));
+}
+
+/// AC#2: a change the plan did not record is refused before anything is staged.
+#[rstest]
+fn cut_refuses_a_change_outside_the_recorded_set(cli_bin: &str) {
+    let (scratch, repo) = release_repo();
+    let plan = scratch.path().join("plan.json");
+    let recorded = scratch.path().join("prepared.json");
+    write_plan(cli_bin, &repo, &plan);
+    prepared_plan(cli_bin, &repo, &plan, &recorded);
+    std::fs::write(repo.join("notes.md"), "unrecorded\n").expect("a change the plan never saw");
+
+    let output = Command::new(cli_bin)
+        .args(["cut", "--plan", recorded.to_str().expect("utf-8 path")])
+        .current_dir(&repo)
+        .output()
+        .expect("binary should run");
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("worktree"),
+        "the refusal names the fact"
+    );
+}
+
+/// AC#2: a plan whose commit is no longer `HEAD` is stale, and is refused.
+#[rstest]
+fn cut_refuses_a_stale_plan(cli_bin: &str) {
+    let (scratch, repo) = release_repo();
+    let plan = scratch.path().join("plan.json");
+    let recorded = scratch.path().join("prepared.json");
+    write_plan(cli_bin, &repo, &plan);
+    prepared_plan(cli_bin, &repo, &plan, &recorded);
+    std::fs::write(repo.join("notes.md"), "later\n").expect("new file");
+    git(&repo, &["add", "--all"]);
+    git(&repo, &["commit", "--quiet", "--message", "docs: later"]);
+
+    let output = Command::new(cli_bin)
+        .args(["cut", "--plan", recorded.to_str().expect("utf-8 path")])
+        .current_dir(&repo)
+        .output()
+        .expect("binary should run");
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("plan.source"),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// AC#3: the cut creates the release commit and tag, and writes nothing else.
+#[rstest]
+fn cut_commits_and_tags_exactly_the_recorded_set(cli_bin: &str) {
+    let (scratch, repo) = release_repo();
+    let plan = scratch.path().join("plan.json");
+    let recorded = scratch.path().join("prepared.json");
+    write_plan(cli_bin, &repo, &plan);
+    prepared_plan(cli_bin, &repo, &plan, &recorded);
+    // What a real prepare does to the tree: the recorded literal, and nothing else. REL-4 ships
+    // the dry run, so the test applies the one change the dry run reported.
+    std::fs::write(
+        repo.join("Cargo.toml"),
+        "[package]\nname = \"demo\"\nversion = \"0.2.0\"\n",
+    )
+    .expect("apply the reported edit");
+    let head_before = git(&repo, &["rev-parse", "HEAD"]);
+
+    let output = Command::new(cli_bin)
+        .args(["cut", "--plan", recorded.to_str().expect("utf-8 path")])
+        .current_dir(&repo)
+        .output()
+        .expect("binary should run");
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let head_after = git(&repo, &["rev-parse", "HEAD"]);
+    assert_ne!(head_after, head_before, "a release commit was created");
+    assert_eq!(git(&repo, &["tag", "--list"]), "v0.2.0");
+    let tag_message = git(&repo, &["tag", "--list", "--format=%(contents)", "v0.2.0"]);
+    assert!(
+        tag_message.contains("plan-digest: sha256:"),
+        "{tag_message}"
+    );
+    assert!(
+        tag_message.contains("policy-digest: sha256:"),
+        "{tag_message}"
+    );
+    let committed = git(&repo, &["show", "--name-only", "--format=", "HEAD"]);
+    let mut paths: Vec<&str> = committed.lines().filter(|line| !line.is_empty()).collect();
+    paths.sort_unstable();
+    assert_eq!(paths, ["Cargo.toml"]);
+    assert_eq!(
+        git(&repo, &["log", "--oneline", "-1", "--format=%s"]),
+        "chore(release): v0.2.0"
+    );
+}
+
+/// `cut --dry-run` validates everything and writes nothing.
+#[rstest]
+fn cut_dry_run_mutates_nothing(cli_bin: &str) {
+    let (scratch, repo) = release_repo();
+    let plan = scratch.path().join("plan.json");
+    let recorded = scratch.path().join("prepared.json");
+    write_plan(cli_bin, &repo, &plan);
+    prepared_plan(cli_bin, &repo, &plan, &recorded);
+    // The recorded edit, applied as a real prepare would: a dry run validates the same state.
+    std::fs::write(
+        repo.join("Cargo.toml"),
+        "[package]\nname = \"demo\"\nversion = \"0.2.0\"\n",
+    )
+    .expect("apply the reported edit");
+    let head_before = git(&repo, &["rev-parse", "HEAD"]);
+
+    let output = Command::new(cli_bin)
+        .args([
+            "cut",
+            "--plan",
+            recorded.to_str().expect("utf-8 path"),
+            "--dry-run",
+        ])
+        .current_dir(&repo)
+        .output()
+        .expect("binary should run");
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("dry run"));
+    assert_eq!(git(&repo, &["rev-parse", "HEAD"]), head_before);
+    assert_eq!(git(&repo, &["tag", "--list"]), "");
+    assert_eq!(
+        std::fs::read_to_string(repo.join("Cargo.toml")).expect("manifest"),
+        "[package]\nname = \"demo\"\nversion = \"0.2.0\"\n",
+        "the dry run did not touch the manifest"
+    );
+}
+
+/// Runs `prepare --dry-run --out` and returns the recorded plan path.
+fn prepared_plan(cli_bin: &str, repo: &Path, plan: &Path, recorded: &Path) {
+    let output = Command::new(cli_bin)
+        .args([
+            "prepare",
+            "--plan",
+            plan.to_str().expect("utf-8 path"),
+            "--dry-run",
+            "--out",
+            recorded.to_str().expect("utf-8 path"),
+        ])
+        .current_dir(repo)
+        .output()
+        .expect("binary should run");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
     );
 }

@@ -3,12 +3,13 @@ id: doc-1
 title: Release controller architecture
 type: specification
 created_date: '2026-10-01 00:27'
-updated_date: '2026-10-23 20:37'
+updated_date: '2026-10-23 21:06'
 tags:
   - architecture
   - release
   - approved
 ---
+
 # Release controller architecture
 
 ## Status
@@ -77,6 +78,30 @@ Each plan records:
 
 `plan` is pure with respect to the repository. It reads the policy and two Git facts and writes
 only the `--out` path it was given; it never commits, tags, or writes a workflow.
+
+## Prepare and cut
+
+`prepare` reports the edits a release needs. Without `--dry-run` it refuses, because writing the
+new literals is not implemented yet: it prints one `would update <path>: <old> -> <new>` line per
+manifest named by `version.manifests` and names the changelog it would rewrite.
+
+`cut` consumes a recorded plan and refuses before any mutation, in this order:
+
+1. `branch` — a detached head is not a release branch.
+2. `plan.source` — the plan came from another commit, or from a tree that was already dirty.
+3. `policy.digest` — `.pixi-release.toml` changed since the plan was recorded.
+4. `plan.touched` — the plan records no files.
+5. `worktree` — a changed path the plan did not record, or nothing left to stage.
+6. `tag` — the policy renders a different tag, or the tag already exists.
+7. `gates.required` — a configured verb failed or never ran.
+
+Only then does it stage exactly `plan.touched()`, commit `chore(release): <tag>`, create the
+annotated tag with `pixi-release-version`, `plan-digest` and `policy-digest` trailers, and — only
+with `--push` — push `refs/heads/<branch>` and then `refs/tags/<tag>`. `--dry-run` performs every
+check and prints the operations instead of executing them.
+
+The Git port has no publication operation, so `cut` cannot reach a registry or a GitHub release by
+construction (`decision-9`). Verification and publication are separate commands.
 
 ## Lifecycle
 

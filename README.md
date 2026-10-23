@@ -12,11 +12,13 @@
 
 ```console
 pixi release plan
+pixi release prepare --plan release-plan.json --dry-run
+pixi release cut --plan release-plan.json
 ```
 
 It decides *what* must be built, *where*, and *what must come back*. The repository decides *how*. The controller never runs a compiler. Design rules live in [`backlog/decisions/`](backlog/decisions/) and the specifications in [`backlog/docs/`](backlog/docs/).
 
-> **Scaffold status.** The repository contains a compiling three-crate Rust skeleton and a working cross-language task graph. The lifecycle commands currently describe their intended phase only. Release mutation and publication are not implemented yet, and no command claims to tag, publish, or verify a release.
+> **Scaffold status.** The repository contains a working three-crate Rust workspace and a cross-language task graph. `plan`, `prepare --dry-run` and `cut` are implemented against a local Git adapter: `plan` derives canonical JSON, `prepare` reports the edits it would make without touching the tree, and `cut` refuses anything unsafe before it commits, tags, and optionally pushes. Publication, artifact verification, and changelog writing are not implemented yet, and no command claims to publish or verify a release.
 
 ## Quick start
 
@@ -43,8 +45,8 @@ pixi run backlog -- board
 | Capability | Status | Where |
 | :-- | :-- | :-- |
 | Authored release policy | Specified in `doc-3` §4; the file is not in this repository yet | `doc-3` §4, `crates/xtask/fixtures/consumers/` |
-| Immutable release plans | Domain types in place, planning planned | `pixi-release-core`, `doc-1` |
-| Git safety for prepare and cut | Port and fake in place, policy planned | `pixi-release-git`, `decision-4` |
+| Immutable release plans | `plan` derives canonical JSON from the policy and two Git facts | `pixi-release-core`, `doc-1` |
+| Git safety for prepare and cut | `prepare --dry-run` records edits without writing; `cut` validates and never publishes | `pixi-release-git`, `decision-4` |
 | Consumer release workflows | Golden template in place; rendering planned. Generated files are never hand-edited | `crates/xtask/templates/workflows/`, `doc-2`, `decision-3` |
 | Artifact verification and resumable publish | Planned | `doc-2` §3, `doc-3` §2.6 |
 | Repository gates | Defined and run in CI: lint, type-check, test, actionlint, workflow and repo checks | `pixi.toml`, `crates/xtask` |

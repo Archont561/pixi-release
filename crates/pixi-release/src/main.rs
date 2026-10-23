@@ -1,15 +1,19 @@
 //! Thin command-line scaffold for the future `pixi release` extension.
 
+mod gates;
 mod git;
 mod policy;
 
 use std::fs;
 
 use pixi_release_core::config::{ReleasePolicy, VersionSource};
+use pixi_release_core::cut::{self, check_repository};
 use pixi_release_core::plan::{Bump, Plan, PlanInputs, SourceRevision, Version, VersionAuthority};
+use pixi_release_core::prepare::version_edits;
+use pixi_release_git::LocalGit;
 use pixi_release_git::{FakeGit, GitProtocol};
 
-const USAGE: &str = "pixi-release <plan [--policy PATH] [--version V] [--bump auto|major|minor|patch] [--out PATH]|prepare|cut|verify|publish|resume|workflow check>";
+const USAGE: &str = "pixi-release <plan [--policy PATH] [--version V] [--bump auto|major|minor|patch] [--out PATH]|prepare --plan PATH --dry-run [--out PATH]|cut --plan PATH [--dry-run] [--push]|verify|publish|resume|workflow check>";
 
 fn main() {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
@@ -24,12 +28,9 @@ fn run(arguments: &[String]) -> i32 {
             0
         }
         [command, rest @ ..] if command == "plan" => plan(rest),
-        [command]
-            if matches!(
-                command.as_str(),
-                "prepare" | "cut" | "verify" | "publish" | "resume"
-            ) =>
-        {
+        [command, rest @ ..] if command == "prepare" => prepare(rest),
+        [command, rest @ ..] if command == "cut" => cut_command(rest),
+        [command] if matches!(command.as_str(), "verify" | "publish" | "resume") => {
             println!("scaffold {command}: release mutation is intentionally not implemented");
             0
         }
@@ -170,4 +171,181 @@ fn emit(plan: &Plan, out: Option<&str>) -> Result<(), String> {
         print!("{}", plan.to_json());
     }
     Ok(())
+}
+
+/// `prepare --dry-run` names the changes a prepare would make and makes none of them.
+///
+/// REL-4 ships the dry run only: writing the literals and regenerating the changelog land with
+/// REL-8, so this command has no mode that touches a tracked file.
+fn prepare(arguments: &[String]) -> i32 {
+    let mut plan_path: Option<String> = None;
+    let mut policy_path = ".pixi-release.toml".to_owned();
+    let mut out: Option<String> = None;
+    let mut dry_run = false;
+
+    let mut rest = arguments.iter();
+    while let Some(argument) = rest.next() {
+        match argument.as_str() {
+            "--dry-run" => dry_run = true,
+            "--plan" | "--policy" | "--out" => {
+                let Some(value) = rest.next() else {
+                    eprintln!("prepare: `{argument}` needs a value");
+                    return 2;
+                };
+                match argument.as_str() {
+                    "--plan" => plan_path = Some(value.clone()),
+                    "--policy" => policy_path.clone_from(value),
+                    _ => out = Some(value.clone()),
+                }
+            }
+            other => {
+                eprintln!("prepare: unknown argument `{other}`\n{USAGE}");
+                return 2;
+            }
+        }
+    }
+
+    if !dry_run {
+        eprintln!("prepare: only --dry-run is implemented; writing manifests lands with REL-8");
+        return 2;
+    }
+    let Some(plan_path) = plan_path else {
+        eprintln!("prepare: --plan is required\n{USAGE}");
+        return 2;
+    };
+
+    match run_prepare(&policy_path, &plan_path, out.as_deref()) {
+        Ok(()) => 0,
+        Err(message) => {
+            eprintln!("{message}");
+            1
+        }
+    }
+}
+
+fn run_prepare(policy_path: &str, plan_path: &str, out: Option<&str>) -> Result<(), String> {
+    let policy = policy::load(policy_path, policy::context())?;
+    let plan = read_plan(plan_path)?;
+
+    let mut manifests = Vec::new();
+    for path in policy.manifests() {
+        let text = fs::read_to_string(path).map_err(|error| format!("prepare: {path}: {error}"))?;
+        manifests.push((path.clone(), text));
+    }
+    let edits = version_edits(manifests, plan.version())
+        .map_err(|refusal| format!("prepare: {refusal}"))?;
+
+    let mut touched: Vec<String> = edits.iter().map(|edit| edit.path().to_owned()).collect();
+    touched.extend(policy.lockfiles().iter().cloned());
+    touched.push(policy.changelog().to_owned());
+
+    for edit in &edits {
+        println!(
+            "prepare: would update {}: {} -> {}",
+            edit.path(),
+            edit.from(),
+            edit.to()
+        );
+    }
+    println!(
+        "prepare: {} manifest(s) would change, {} file(s) in the touched set, worktree untouched",
+        edits.len(),
+        {
+            let mut unique = touched.clone();
+            unique.sort();
+            unique.dedup();
+            unique.len()
+        }
+    );
+
+    if let Some(path) = out {
+        let recorded = plan.with_touched(touched).to_json();
+        fs::write(path, recorded).map_err(|error| format!("prepare: {path}: {error}"))?;
+        println!("prepare: recorded the touched set in {path}");
+    }
+    Ok(())
+}
+
+/// `cut` validates everything, then stages exactly the plan's touched set, commits and tags.
+fn cut_command(arguments: &[String]) -> i32 {
+    let mut plan_path: Option<String> = None;
+    let mut policy_path = ".pixi-release.toml".to_owned();
+    let mut dry_run = false;
+    let mut push = false;
+
+    let mut rest = arguments.iter();
+    while let Some(argument) = rest.next() {
+        match argument.as_str() {
+            "--dry-run" => dry_run = true,
+            "--push" => push = true,
+            "--plan" | "--policy" => {
+                let Some(value) = rest.next() else {
+                    eprintln!("cut: `{argument}` needs a value");
+                    return 2;
+                };
+                match argument.as_str() {
+                    "--plan" => plan_path = Some(value.clone()),
+                    _ => policy_path.clone_from(value),
+                }
+            }
+            other => {
+                eprintln!("cut: unknown argument `{other}`\n{USAGE}");
+                return 2;
+            }
+        }
+    }
+
+    let Some(plan_path) = plan_path else {
+        eprintln!("cut: --plan is required\n{USAGE}");
+        return 2;
+    };
+
+    match run_cut(&policy_path, &plan_path, dry_run, push) {
+        Ok(()) => 0,
+        Err(message) => {
+            eprintln!("{message}");
+            1
+        }
+    }
+}
+
+fn run_cut(policy_path: &str, plan_path: &str, dry_run: bool, push: bool) -> Result<(), String> {
+    let policy = policy::load(policy_path, policy::context())?;
+    let policy_digest = policy::digest(policy_path)?;
+    let plan = read_plan(plan_path)?;
+    let mut repository = LocalGit::open(".").map_err(|error| format!("cut: {error}"))?;
+
+    // Refuse what the repository alone can answer before spending the configured gates.
+    check_repository(&repository, &policy, &plan, &policy_digest)
+        .map_err(|refusal| format!("cut: {refusal}"))?;
+
+    let gates = gates::report(&gates::PixiRunner, policy.gates());
+    let permit = cut::permit(&repository, &policy, &plan, &policy_digest, &gates)
+        .map_err(|refusal| format!("cut: {refusal}"))?;
+
+    if dry_run {
+        println!(
+            "cut: would stage {} path(s), commit, and tag {} at {} (dry run, nothing written)",
+            plan.touched().len(),
+            permit.tag(),
+            permit.commit()
+        );
+        return Ok(());
+    }
+
+    let outcome =
+        cut::cut(&mut repository, &plan, &permit, push).map_err(|error| format!("cut: {error}"))?;
+    println!(
+        "cut: committed {} and tagged {}{}",
+        outcome.commit(),
+        outcome.tag(),
+        if outcome.pushed() { " (pushed)" } else { "" }
+    );
+    Ok(())
+}
+
+/// Reads a plan file and re-validates it, so a hand-edited plan is refused rather than trusted.
+fn read_plan(path: &str) -> Result<Plan, String> {
+    let text = fs::read_to_string(path).map_err(|error| format!("plan: {path}: {error}"))?;
+    Plan::from_json(&text).map_err(|error| format!("plan: {path}: {error}"))
 }

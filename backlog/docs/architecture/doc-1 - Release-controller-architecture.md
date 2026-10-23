@@ -3,12 +3,13 @@ id: doc-1
 title: Release controller architecture
 type: specification
 created_date: '2026-10-01 00:27'
-updated_date: '2026-10-23 21:06'
+updated_date: '2026-10-23 21:51'
 tags:
   - architecture
   - release
   - approved
 ---
+
 
 # Release controller architecture
 
@@ -111,7 +112,8 @@ The controller implements `plan → prepare → cut/tag → verify/build → pub
 
 - `pixi-release-core`: deterministic release-domain types, state transitions, plan/manifest validation.
 - `pixi-release-git`: semantic `GitProtocol`, stateful fake, then shell and local-bare-repository adapters.
-- `pixi-release`: thin extension CLI, configuration load, command presentation, and workflow renderer entrypoints.
+- `pixi-release`: thin extension CLI whose grammar `clap` derives (`decision-13`), policy
+  configuration load, command presentation, and workflow renderer entrypoints.
 
 ## Delivery mechanics
 

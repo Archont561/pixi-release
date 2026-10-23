@@ -8,6 +8,13 @@ target/
 # decision-4 exists so the plan does not need to be: it lives in the annotated tag.
 .pixi-release/
 
+# pixi-sandbox runtime state: transports and downloaded tools. The generous half of this list is
+# upstream's, adopted with the workflows (doc-3 §2.2) so a pack run cannot dirty the tree.
+.pixi-sandbox/
+/pixi-sandbox
+/pixi-sandbox.exe
+/SHA256SUMS
+
 # Local-only
 .env
 .env.*

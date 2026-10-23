@@ -13,6 +13,12 @@ publish = false
 [lints]
 workspace = true
 
+[dependencies]
+# The authored policy is TOML (doc-3 §4). Parsing lives in core because it is deterministic
+# domain behaviour with no I/O; serde is only the decoder for that document.
+serde = { workspace = true, features = ["derive"] }
+toml = { workspace = true }
+
 [dev-dependencies]
 rstest.workspace = true
 rstest-bdd.workspace = true

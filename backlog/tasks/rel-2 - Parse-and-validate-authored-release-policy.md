@@ -1,10 +1,10 @@
 ---
 id: REL-2
 title: Parse and validate authored release policy
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-01 00:27'
-updated_date: '2026-10-20 20:11'
+updated_date: '2026-10-23 19:32'
 labels:
   - release
   - architecture
@@ -26,15 +26,25 @@ Load `.pixi-release.toml` into typed configuration and reject ambiguous or unsaf
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Configuration validation names the exact invalid key or incompatible authority choice.
-- [ ] #2 Convco mode records the Convco version and configuration hashes as plan evidence.
-- [ ] #3 Native SemVer behavior is rejected while active Convco policy is configured.
+- [x] #1 Configuration validation names the exact invalid key or incompatible authority choice.
+- [x] #2 Convco mode records the Convco version and configuration hashes as plan evidence.
+- [x] #3 Native SemVer behavior is rejected while active Convco policy is configured.
 - [ ] #4 Proven by a green gates run on the merge commit that covers this task's tests
-- [ ] #5 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
+- [x] #5 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Configuration fixtures cover valid, incompatible, and missing-policy cases.
-- [ ] #2 The public configuration contract is documented in Backlog architecture documentation.
+- [x] #1 Configuration fixtures cover valid, incompatible, and missing-policy cases.
+- [x] #2 The public configuration contract is documented in Backlog architecture documentation.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Seam: `pixi_release_core::config` — `ReleasePolicy::parse_with(text, &PolicyContext)` returns every fault with its dotted key; `PlanEvidence` records the Convco version and SHA-256 digests. The CLI stays thin: `pixi-release plan [--policy PATH] [--convco-version V]` only reads files and prints the evidence line.
+
+Measured proof: 20 cases in `crates/pixi-release-core/tests/config.rs` (rstest + proptest + rstest-bdd outline) and 6 in `crates/pixi-release/tests/cli.rs`; `pixi run --frozen gates` exit 0 locally (11 test binaries green, xtask repository checks passed). Tests were written first and observed red (`unresolved import pixi_release_core::config`) before the module existed.
+
+Contract documented in `doc-1` §Configuration contract, with `doc-3` §4 kept as the single canonical shape. AC#4 stays open until the merge commit's CI run is green.
+<!-- SECTION:NOTES:END -->

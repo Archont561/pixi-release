@@ -859,6 +859,8 @@ dependencies = [
  "rstest",
  "rstest-bdd",
  "rstest-bdd-macros",
+ "sha2",
+ "tempfile",
 ]
 
 [[package]]
@@ -869,6 +871,8 @@ dependencies = [
  "rstest",
  "rstest-bdd",
  "rstest-bdd-macros",
+ "serde",
+ "toml",
 ]
 
 [[package]]

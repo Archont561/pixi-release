@@ -1,9 +1,10 @@
 ---
 id: REL-17
 title: Decide whether release-adjacent governance templates belong to pixi-release
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-23 15:01'
+updated_date: '2026-10-23 19:44'
 labels:
   - architecture
   - ci
@@ -24,9 +25,19 @@ Issue #9 asks for generated issue forms with workspace scopes, a PR template, an
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A decision records each proposed artifact (issue forms, issue `config.yml`, PR template, PR-title check) as admitted or rejected, with the reason and the lane it belongs to.
-- [ ] #2 The scope list is single-sourced from `.versionrc` and Convco, with no second enumeration of scopes in any generated file (decision-6).
-- [ ] #3 The decision-3 rendering rules (marker, stamp, policy digest, drift gate) are applied to each admitted file or waived explicitly.
-- [ ] #4 decision-10 is confirmed or amended by the recorded decision, whichever the outcome requires, in the same change.
-- [ ] #5 No generator code is merged under this task.
+- [x] #1 A decision records each proposed artifact (issue forms, issue `config.yml`, PR template, PR-title check) as admitted or rejected, with the reason and the lane it belongs to.
+- [x] #2 The scope list is single-sourced from `.versionrc` and Convco, with no second enumeration of scopes in any generated file (decision-6).
+- [x] #3 The decision-3 rendering rules (marker, stamp, policy digest, drift gate) are applied to each admitted file or waived explicitly.
+- [x] #4 decision-10 is confirmed or amended by the recorded decision, whichever the outcome requires, in the same change.
+- [x] #5 No generator code is merged under this task.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Answered by `decision-12` (accepted 2026-10-23), with consumer-facing detail in `doc-2` §2.7 and the withdrawal recorded in `doc-6` §Rejected directions.
+
+Per artifact: issue forms, issue `config.yml` and the PR template are rejected — governance lane, and a scope dropdown can only be a generated copy because GitHub issue forms are static YAML while Convco offers `scopeRegex` rather than a scope list. The PR-title check is rejected as a rendered file and as a subcommand, and admitted as one hand-written `convco check --from-stdin` line in the consumer's `ci.yml`.
+
+AC#2: the only scope source named anywhere is `.versionrc`; no artifact carries a list, because nothing is generated. AC#3: no file is rendered, so decision-3's marker/stamp/digest/drift gate is waived explicitly, with the waiver lapsing on any future rendered governance file. AC#4: `decision-10` is confirmed rather than amended — the renderer keeps `release.yml` and `auto-release.yml` only — and `.pixi-release.toml`'s `workflows.render` admissible set is unchanged. AC#5: no generator code was added; the change is Backlog documents plus the withdrawal of REL-18.
+<!-- SECTION:NOTES:END -->

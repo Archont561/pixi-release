@@ -202,6 +202,19 @@ Required behaviour here:
 
 ---
 
+### 2.7 PR titles are checked, not generated
+
+`decision-12` keeps PR-title validation out of the renderer and inside the consumer's own
+`ci.yml`. The whole check is one line, and it reads the same `.versionrc` that Convco reads:
+
+```yaml
+- name: Check the PR title
+  run: printf '%s\n' "${{ github.event.pull_request.title }}" | convco check --from-stdin
+```
+
+Nothing is generated, so there is no marker, stamp or drift gate on this step — and no list of
+types or scopes is copied anywhere.
+
 ## 3. The generated workflows
 
 Action pins are the ones already in use across your repos.

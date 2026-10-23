@@ -4,6 +4,7 @@ title: 'Generate release-compatible issue forms, PR template and PR-title check'
 status: To Do
 assignee: []
 created_date: '2026-10-23 15:01'
+updated_date: '2026-10-23 19:43'
 labels:
   - ci
   - testing
@@ -32,3 +33,12 @@ Renders the governance files that REL-17 admits. Every rendered file goes throug
 - [ ] #4 `pixi release workflow check` detects drift in every generated governance file (decision-3).
 - [ ] #5 Proven by a green gates run on the merge commit that covers this task tests.
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-23 19:43
+---
+Withdrawn by decision-12: issue forms, issue config and the PR template are rejected, and the PR-title check is admitted only as one hand-written `convco check --from-stdin` line in the consumer's own ci.yml, which decision-10 §2 keeps out of the renderer. No file is generated, so the generated-file criteria #1–#4 have no subject. Archiving rather than leaving an actionable task whose premise the decision removed.
+---
+<!-- COMMENTS:END -->

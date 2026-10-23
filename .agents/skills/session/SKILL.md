@@ -31,10 +31,14 @@ file is wrong — fix it in the same commit.
    ```
    - If `pixi` exists: `pixi run setup` (Bun install and Lefthook hooks), then `pixi run gates`
      as the baseline.
-   - If `pixi`, `bun`, or `cargo` is missing (the sandbox measured this on 2026-10-04 — re-check,
-     it may have changed): Backlog is still usable through `npx -y backlog.md@1.53.0 …`, the exact
-     version pinned in `package.json`. Local gates are **not** runnable. Say so, and treat CI as the
-     authority: `gh run list --branch <branch> --limit 5`.
+   - If `pixi`, `bun`, or `cargo` is missing, that is the fresh-sandbox state, not a dead end:
+     restore the environment with the recipe in `backlog/docs/research/agent-environment/doc-7`
+     (clone the `sandbox/*` branch, `restore` into a scratch directory outside the repository, then
+     `pixi install --frozen --offline`, `pixi run setup`, `pixi run gates`). Do this before
+     planning, so the gates you promise are the gates that will actually run.
+   - Backlog stays usable throughout through `npx -y backlog.md@1.53.0 …`, the exact version
+     pinned in `package.json`. Only when a restore is impossible, treat CI as the authority:
+     `gh run list --branch <branch> --limit 5`.
 4. **GitHub.** `gh auth status`. If it fails with an authentication error, tell the user the GitHub
    connection needs attention and ask them to reconnect GitHub in Arena. Do not ask for tokens.
 5. **Environment facts.** Read `backlog/docs/research/agent-environment/doc-7` before planning any

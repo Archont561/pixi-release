@@ -4,10 +4,10 @@ title: Answer the open questions in doc-3 section 6
 status: Done
 assignee: []
 created_date: '2026-10-20 19:12'
-updated_date: '2026-10-20 19:51'
+updated_date: '2026-10-23 15:20'
 labels:
   - architecture
-milestone: M1
+milestone: m-1
 dependencies: []
 priority: high
 ordinal: 9000

@@ -4,10 +4,10 @@ title: 'Gate generated-workflow drift with markers, stamps and workflow check'
 status: To Do
 assignee: []
 created_date: '2026-10-20 19:12'
-updated_date: '2026-10-20 20:11'
+updated_date: '2026-10-23 15:20'
 labels:
   - release
-milestone: M2
+milestone: m-2
 dependencies:
   - REL-5
 priority: medium

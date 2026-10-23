@@ -1,10 +1,10 @@
 ---
 id: REL-2
 title: Parse and validate authored release policy
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-01 00:27'
-updated_date: '2026-10-23 19:32'
+updated_date: '2026-10-23 19:39'
 labels:
   - release
   - architecture
@@ -29,7 +29,7 @@ Load `.pixi-release.toml` into typed configuration and reject ambiguous or unsaf
 - [x] #1 Configuration validation names the exact invalid key or incompatible authority choice.
 - [x] #2 Convco mode records the Convco version and configuration hashes as plan evidence.
 - [x] #3 Native SemVer behavior is rejected while active Convco policy is configured.
-- [ ] #4 Proven by a green gates run on the merge commit that covers this task's tests
+- [x] #4 Proven by a green gates run on the merge commit that covers this task's tests
 - [x] #5 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->
 
@@ -48,3 +48,12 @@ Measured proof: 20 cases in `crates/pixi-release-core/tests/config.rs` (rstest +
 
 Contract documented in `doc-1` §Configuration contract, with `doc-3` §4 kept as the single canonical shape. AC#4 stays open until the merge commit's CI run is green.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-23 19:39
+---
+AC#4 proven: merge commit 93de61a, `ci` run 40012670658 — gates success in 3m09s (19:36:07Z → 19:39:16Z). All five ACs and both DoD items now checked; the local gates run and the CLI/core measurements are recorded in the implementation notes.
+---
+<!-- COMMENTS:END -->

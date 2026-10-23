@@ -1,10 +1,10 @@
 ---
 id: REL-3
 title: Produce immutable deterministic release plans
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-01 00:27'
-updated_date: '2026-10-23 20:38'
+updated_date: '2026-10-23 20:44'
 labels:
   - release
   - testing
@@ -29,7 +29,7 @@ Implement `plan` as a read-only operation that derives a canonical JSON proposal
 - [x] #1 Identical repository and policy inputs produce byte-identical plan JSON.
 - [x] #2 The plan identifies the version/tag authority and source revision it was derived from.
 - [x] #3 plan performs no Git mutation, registry upload, or workflow write.
-- [ ] #4 Proven by a green gates run on the merge commit that covers this task's tests
+- [x] #4 Proven by a green gates run on the merge commit that covers this task's tests
 - [x] #5 Tests use rstest fixtures and proptest properties, written test-first at an agreed seam per the tdd skill (decision-11)
 <!-- AC:END -->
 
@@ -48,3 +48,12 @@ Measured proof: 24 cases in `crates/pixi-release-core/tests/plan.rs` (golden fix
 
 AC#3 is proven by `plan_leaves_the_repository_untouched`: same `HEAD`, no tag, unchanged `git status --porcelain`, no `.github` directory, and the only output is the `--out` file. Contract recorded in `doc-1` §Plan format. AC#4 stays open until the merge commit's CI run is green.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-23 20:44
+---
+AC#4 proven: merge commit 382d8e0, ci run 40021207646 — gates success in 2m30s (20:41:52Z → 20:44:22Z) on the clean runner. All five criteria and both DoD items are now measured; REL-3 closes with M1 at 3/6.
+---
+<!-- COMMENTS:END -->

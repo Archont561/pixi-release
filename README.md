@@ -69,7 +69,7 @@ This repository is a single-root Cargo workspace plus a Bun workspace, both driv
 | :-- | :-- |
 | `crates/pixi-release-core` | Release-domain types and deterministic planning invariants. |
 | `crates/pixi-release-git` | Semantic Git port (`GitProtocol`) plus a stateful fake for unit tests. |
-| `crates/pixi-release` | The `pixi-release` executable. Parsing and presentation only. |
+| `crates/pixi-release` | The `pixi-release` executable: `clap` grammar, policy load, and presentation. |
 | `crates/xtask` | Owner-lane repository automation: Rust checks, the TypeScript workspace scripts, golden templates, and consumer fixtures. It is not the product, and it is deleted once a pinned prior release can do its job. |
 | `crates/package.json` | Turbo façade for Cargo, covering every member. |
 | `crates/xtask/templates/workflows/` | Golden renderer templates for the consumer lane. |

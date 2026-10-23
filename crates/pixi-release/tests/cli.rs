@@ -102,6 +102,82 @@ fn version_is_a_stable_cli_surface(cli_bin: &str) {
     );
 }
 
+/// The grammar is `clap`'s: `--help` lists every lifecycle command, and it exits successfully.
+#[rstest]
+fn help_lists_the_lifecycle_commands(cli_bin: &str) {
+    let output = Command::new(cli_bin)
+        .arg("--help")
+        .output()
+        .expect("binary should run");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for command in [
+        "plan", "prepare", "cut", "verify", "publish", "resume", "workflow",
+    ] {
+        assert!(
+            stdout.contains(command),
+            "`{command}` missing from:\n{stdout}"
+        );
+    }
+    let plan_help = Command::new(cli_bin)
+        .args(["plan", "--help"])
+        .output()
+        .expect("binary should run");
+    assert!(plan_help.status.success());
+    let plan_help = String::from_utf8_lossy(&plan_help.stdout);
+    assert!(plan_help.contains("--policy"), "{plan_help}");
+    assert!(plan_help.contains("--bump"), "{plan_help}");
+}
+
+/// A flag a subcommand does not define is a usage error, not a silent no-op.
+#[rstest]
+fn an_unknown_flag_is_refused_with_usage(cli_bin: &str) {
+    let output = Command::new(cli_bin)
+        .args(["cut", "--plan", "plan.json", "--publish"])
+        .output()
+        .expect("binary should run");
+
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--publish"), "{stderr}");
+    assert!(stderr.contains("Usage: pixi-release cut"), "{stderr}");
+}
+
+/// The bump vocabulary is closed, and clap rejects anything outside it before the command runs.
+#[rstest]
+fn an_unknown_bump_is_refused(cli_bin: &str) {
+    let dir = tempfile::tempdir().expect("temp dir");
+    std::fs::write(dir.path().join(".pixi-release.toml"), POLICY).expect("policy");
+    init_repo(dir.path());
+
+    let output = Command::new(cli_bin)
+        .args(["plan", "--bump", "sideways"])
+        .current_dir(dir.path())
+        .output()
+        .expect("binary should run");
+
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("sideways"), "{stderr}");
+    assert!(
+        stderr.contains("auto"),
+        "the accepted set is listed: {stderr}"
+    );
+}
+
+/// `cut` cannot run without a plan, and says so before touching the repository.
+#[rstest]
+fn cut_without_a_plan_is_a_usage_error(cli_bin: &str) {
+    let output = Command::new(cli_bin)
+        .arg("cut")
+        .output()
+        .expect("binary should run");
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("--plan"));
+}
+
 #[rstest]
 fn unknown_command_is_refused(cli_bin: &str) {
     let output = Command::new(cli_bin)

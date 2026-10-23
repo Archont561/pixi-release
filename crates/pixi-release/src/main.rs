@@ -1,4 +1,8 @@
-//! Thin command-line scaffold for the future `pixi release` extension.
+//! Command-line entry point for the `pixi release` extension.
+//!
+//! `clap` owns the grammar: which subcommands exist, which flags they accept, and what a
+//! malformed invocation prints. Nothing else in the crate parses `argv`, so the usage text and
+//! the exit codes come from one place instead of a hand-written matcher.
 
 mod gates;
 mod git;
@@ -6,6 +10,7 @@ mod policy;
 
 use std::fs;
 
+use clap::{Parser, Subcommand, ValueEnum};
 use pixi_release_core::config::{ReleasePolicy, VersionSource};
 use pixi_release_core::cut::{self, check_repository};
 use pixi_release_core::plan::{Bump, Plan, PlanInputs, SourceRevision, Version, VersionAuthority};
@@ -13,99 +18,159 @@ use pixi_release_core::prepare::version_edits;
 use pixi_release_git::LocalGit;
 use pixi_release_git::{FakeGit, GitProtocol};
 
-const USAGE: &str = "pixi-release <plan [--policy PATH] [--version V] [--bump auto|major|minor|patch] [--out PATH]|prepare --plan PATH --dry-run [--out PATH]|cut --plan PATH [--dry-run] [--push]|verify|publish|resume|workflow check>";
-
-fn main() {
-    let arguments: Vec<String> = std::env::args().skip(1).collect();
-    let exit_code = run(&arguments);
-    std::process::exit(exit_code);
+#[derive(Parser)]
+#[command(
+    name = "pixi-release",
+    version,
+    about = "Safe release workflow controller for Pixi projects",
+    subcommand_required = true,
+    arg_required_else_help = true
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
 }
 
-fn run(arguments: &[String]) -> i32 {
-    match arguments {
-        [command] if command == "--version" || command == "-V" => {
-            println!("pixi-release {}", env!("CARGO_PKG_VERSION"));
-            0
-        }
-        [command, rest @ ..] if command == "plan" => plan(rest),
-        [command, rest @ ..] if command == "prepare" => prepare(rest),
-        [command, rest @ ..] if command == "cut" => cut_command(rest),
-        [command] if matches!(command.as_str(), "verify" | "publish" | "resume") => {
-            println!("scaffold {command}: release mutation is intentionally not implemented");
-            0
-        }
-        [workflow, check] if workflow == "workflow" && check == "check" => {
-            let git = FakeGit::new("scaffold", true);
-            println!("scaffold workflow check: git_clean={}", git.is_clean());
-            0
-        }
-        _ => {
-            eprintln!("{USAGE}");
-            2
+#[derive(Subcommand)]
+enum Command {
+    /// Derive the immutable release plan
+    Plan(PlanOptions),
+    /// Report the edits a release needs, without writing them
+    Prepare(PrepareOptions),
+    /// Validate the plan, then commit and tag it
+    Cut(CutOptions),
+    /// Verify recorded release evidence
+    Verify,
+    /// Publish verified artifacts
+    Publish,
+    /// Resume unfinished publish targets
+    Resume,
+    /// Generated workflow maintenance
+    Workflow {
+        #[command(subcommand)]
+        command: WorkflowCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum WorkflowCommand {
+    /// Check generated workflows for drift
+    Check,
+}
+
+/// The bump Convco should apply, as a command-line value.
+#[derive(Clone, Copy, ValueEnum)]
+enum BumpChoice {
+    Auto,
+    Major,
+    Minor,
+    Patch,
+}
+
+impl From<BumpChoice> for Bump {
+    fn from(choice: BumpChoice) -> Self {
+        match choice {
+            BumpChoice::Auto => Self::Auto,
+            BumpChoice::Major => Self::Major,
+            BumpChoice::Minor => Self::Minor,
+            BumpChoice::Patch => Self::Patch,
         }
     }
 }
 
 /// Everything `plan` accepts on the command line.
+#[derive(Parser)]
 struct PlanOptions {
+    /// Release policy to read
+    #[arg(long, value_name = "PATH", default_value = ".pixi-release.toml")]
     policy_path: String,
+    /// Convco version to record as plan evidence
+    #[arg(long, value_name = "V")]
     convco_version: Option<String>,
+    /// Version to use instead of letting Convco derive one
+    #[arg(long = "version", value_name = "V")]
     explicit_version: Option<String>,
-    bump: Bump,
+    /// Version bump Convco applies
+    #[arg(long, value_enum, default_value_t = BumpChoice::Auto)]
+    bump: BumpChoice,
+    /// Write the plan here instead of stdout
+    #[arg(long, value_name = "PATH")]
     out: Option<String>,
+    /// Commit the plan describes, instead of HEAD
+    #[arg(long, value_name = "SHA", hide = true)]
     commit: Option<String>,
 }
 
-impl PlanOptions {
-    /// Parses the flags, returning the usage message to show on a malformed invocation.
-    fn parse(arguments: &[String]) -> Result<Self, String> {
-        let mut options = Self {
-            policy_path: ".pixi-release.toml".to_owned(),
-            convco_version: None,
-            explicit_version: None,
-            bump: Bump::Auto,
-            out: None,
-            commit: None,
-        };
-        let mut rest = arguments.iter();
-        while let Some(argument) = rest.next() {
-            let value = |rest: &mut std::slice::Iter<'_, String>| {
-                rest.next()
-                    .cloned()
-                    .ok_or_else(|| format!("plan: `{argument}` needs a value"))
-            };
-            match argument.as_str() {
-                "--policy" => options.policy_path = value(&mut rest)?,
-                "--convco-version" => options.convco_version = Some(value(&mut rest)?),
-                "--version" => options.explicit_version = Some(value(&mut rest)?),
-                "--out" => options.out = Some(value(&mut rest)?),
-                "--commit" => options.commit = Some(value(&mut rest)?),
-                "--bump" => {
-                    let requested = value(&mut rest)?;
-                    options.bump = Bump::parse(&requested).ok_or_else(|| {
-                        format!("plan: `{requested}` is not one of auto, major, minor, patch")
-                    })?;
-                }
-                other => return Err(format!("plan: unknown argument `{other}`")),
-            }
-        }
-        Ok(options)
-    }
+/// Everything `prepare` accepts on the command line.
+#[derive(Parser)]
+struct PrepareOptions {
+    /// The recorded plan to prepare for
+    #[arg(long, value_name = "PATH")]
+    plan: String,
+    /// Release policy to read
+    #[arg(long, value_name = "PATH", default_value = ".pixi-release.toml")]
+    policy_path: String,
+    /// Report the edits and write nothing; the only implemented mode
+    #[arg(long, required = true)]
+    dry_run: bool,
+    /// Record the touched set into this plan file
+    #[arg(long, value_name = "PATH")]
+    out: Option<String>,
 }
 
-/// `plan` derives the immutable release proposal and records where every part of it came from.
-///
-/// It reads the policy and two Git facts and writes nothing but the requested `--out` file: no
-/// commit, no tag, no workflow (`doc-2` §2.3, REL-3).
-fn plan(arguments: &[String]) -> i32 {
-    let options = match PlanOptions::parse(arguments) {
-        Ok(options) => options,
-        Err(message) => {
-            eprintln!("{message}\n{USAGE}");
-            return 2;
+/// Everything `cut` accepts on the command line.
+#[derive(Parser)]
+struct CutOptions {
+    /// The recorded plan to cut
+    #[arg(long, value_name = "PATH")]
+    plan: String,
+    /// Release policy to read
+    #[arg(long, value_name = "PATH", default_value = ".pixi-release.toml")]
+    policy_path: String,
+    /// Validate and report the operations without executing them
+    #[arg(long)]
+    dry_run: bool,
+    /// Push the release commit and tag after cutting them
+    #[arg(long)]
+    push: bool,
+}
+
+fn main() {
+    std::process::exit(run(Cli::parse()));
+}
+
+fn run(cli: Cli) -> i32 {
+    let outcome = match cli.command {
+        Command::Plan(options) => run_plan(&options),
+        Command::Prepare(options) => {
+            run_prepare(&options.policy_path, &options.plan, options.out.as_deref())
+        }
+        Command::Cut(options) => run_cut(
+            &options.policy_path,
+            &options.plan,
+            options.dry_run,
+            options.push,
+        ),
+        Command::Verify => {
+            scaffold("verify");
+            Ok(())
+        }
+        Command::Publish => {
+            scaffold("publish");
+            Ok(())
+        }
+        Command::Resume => {
+            scaffold("resume");
+            Ok(())
+        }
+        Command::Workflow {
+            command: WorkflowCommand::Check,
+        } => {
+            workflow_check();
+            Ok(())
         }
     };
-    match run_plan(&options) {
+    match outcome {
         Ok(()) => 0,
         Err(message) => {
             eprintln!("{message}");
@@ -114,6 +179,21 @@ fn plan(arguments: &[String]) -> i32 {
     }
 }
 
+/// A lifecycle phase that is named but not implemented yet.
+fn scaffold(command: &str) {
+    println!("scaffold {command}: release mutation is intentionally not implemented");
+}
+
+/// The drift gate's placeholder: it reports what it checked and claims nothing more.
+fn workflow_check() {
+    let git = FakeGit::new("scaffold", true);
+    println!("scaffold workflow check: git_clean={}", git.is_clean());
+}
+
+/// `plan` derives the immutable release proposal and records where every part of it came from.
+///
+/// It reads the policy and two Git facts and writes nothing but the requested `--out` file: no
+/// commit, no tag, no workflow (`doc-2` §2.3, REL-3).
 fn run_plan(options: &PlanOptions) -> Result<(), String> {
     let policy = policy::load(&options.policy_path, policy::context())?;
     let policy_digest = policy::digest(&options.policy_path)?;
@@ -148,11 +228,12 @@ fn resolve_authority(
                 .to_owned(),
         );
     }
-    let derived = policy::convco_next_version(options.bump)?;
+    let bump = Bump::from(options.bump);
+    let derived = policy::convco_next_version(bump)?;
     let version = Version::parse(&derived).map_err(|error| format!("plan: {error}"))?;
     let evidence = policy::convco_evidence(options.convco_version.as_deref())?;
     Ok(VersionAuthority::Convco {
-        bump: options.bump,
+        bump,
         version,
         evidence,
     })
@@ -177,52 +258,6 @@ fn emit(plan: &Plan, out: Option<&str>) -> Result<(), String> {
 ///
 /// REL-4 ships the dry run only: writing the literals and regenerating the changelog land with
 /// REL-8, so this command has no mode that touches a tracked file.
-fn prepare(arguments: &[String]) -> i32 {
-    let mut plan_path: Option<String> = None;
-    let mut policy_path = ".pixi-release.toml".to_owned();
-    let mut out: Option<String> = None;
-    let mut dry_run = false;
-
-    let mut rest = arguments.iter();
-    while let Some(argument) = rest.next() {
-        match argument.as_str() {
-            "--dry-run" => dry_run = true,
-            "--plan" | "--policy" | "--out" => {
-                let Some(value) = rest.next() else {
-                    eprintln!("prepare: `{argument}` needs a value");
-                    return 2;
-                };
-                match argument.as_str() {
-                    "--plan" => plan_path = Some(value.clone()),
-                    "--policy" => policy_path.clone_from(value),
-                    _ => out = Some(value.clone()),
-                }
-            }
-            other => {
-                eprintln!("prepare: unknown argument `{other}`\n{USAGE}");
-                return 2;
-            }
-        }
-    }
-
-    if !dry_run {
-        eprintln!("prepare: only --dry-run is implemented; writing manifests lands with REL-8");
-        return 2;
-    }
-    let Some(plan_path) = plan_path else {
-        eprintln!("prepare: --plan is required\n{USAGE}");
-        return 2;
-    };
-
-    match run_prepare(&policy_path, &plan_path, out.as_deref()) {
-        Ok(()) => 0,
-        Err(message) => {
-            eprintln!("{message}");
-            1
-        }
-    }
-}
-
 fn run_prepare(policy_path: &str, plan_path: &str, out: Option<&str>) -> Result<(), String> {
     let policy = policy::load(policy_path, policy::context())?;
     let plan = read_plan(plan_path)?;
@@ -267,48 +302,6 @@ fn run_prepare(policy_path: &str, plan_path: &str, out: Option<&str>) -> Result<
 }
 
 /// `cut` validates everything, then stages exactly the plan's touched set, commits and tags.
-fn cut_command(arguments: &[String]) -> i32 {
-    let mut plan_path: Option<String> = None;
-    let mut policy_path = ".pixi-release.toml".to_owned();
-    let mut dry_run = false;
-    let mut push = false;
-
-    let mut rest = arguments.iter();
-    while let Some(argument) = rest.next() {
-        match argument.as_str() {
-            "--dry-run" => dry_run = true,
-            "--push" => push = true,
-            "--plan" | "--policy" => {
-                let Some(value) = rest.next() else {
-                    eprintln!("cut: `{argument}` needs a value");
-                    return 2;
-                };
-                match argument.as_str() {
-                    "--plan" => plan_path = Some(value.clone()),
-                    _ => policy_path.clone_from(value),
-                }
-            }
-            other => {
-                eprintln!("cut: unknown argument `{other}`\n{USAGE}");
-                return 2;
-            }
-        }
-    }
-
-    let Some(plan_path) = plan_path else {
-        eprintln!("cut: --plan is required\n{USAGE}");
-        return 2;
-    };
-
-    match run_cut(&policy_path, &plan_path, dry_run, push) {
-        Ok(()) => 0,
-        Err(message) => {
-            eprintln!("{message}");
-            1
-        }
-    }
-}
-
 fn run_cut(policy_path: &str, plan_path: &str, dry_run: bool, push: bool) -> Result<(), String> {
     let policy = policy::load(policy_path, policy::context())?;
     let policy_digest = policy::digest(policy_path)?;

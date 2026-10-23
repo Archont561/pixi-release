@@ -9,25 +9,35 @@
     "Cargo.toml",
     "Cargo.lock"
   ],
-  "globalEnv": ["PIXI_RELEASE_VERSION"],
+  "globalEnv": [
+    "PIXI_RELEASE_VERSION"
+  ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "lint": {
       "outputs": []
     },
     "coverage": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": [],
       "cache": false
     },
@@ -47,5 +57,8 @@
     "//#typecheck": {
       "outputs": []
     }
-  }
+  },
+  "globalPassThroughEnv": [
+    "CARGO_HOME"
+  ]
 }

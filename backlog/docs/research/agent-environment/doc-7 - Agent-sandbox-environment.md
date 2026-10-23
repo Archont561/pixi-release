@@ -3,7 +3,7 @@ id: doc-7
 title: Agent sandbox environment
 type: other
 created_date: '2026-10-20 17:55'
-updated_date: '2026-10-23 17:48'
+updated_date: '2026-10-23 18:51'
 ---
 ## Purpose
 
@@ -92,13 +92,19 @@ Results: `pixi 0.83.0`, `pixi-sandbox 0.8.0`, `cargo 1.98.1` and `rustc` all wor
 installs `pixi` and `pixi-sandbox` into `~/.local/bin`; they are not on `PATH` in an already-running
 shell.
 
-**What this does and does not unlock.** `rustfmt`, `actionlint` and the Bun-level workspace checks
-now run locally. `cargo clippy`, `cargo check` and `cargo test` still do **not**: `index.crates.io`,
-`static.crates.io` and `crates.io` all fail (HTTP 000), and the dependencies are not vendored, so
-offline resolution stops at `no matching package named proptest found`. The bundle sets
-`cargo_vendor = false` deliberately (`decision-8` rebuilds releases on their own runners), so a
-local Rust build needs either network to crates.io or a vendored bundle. CI remains the authority
-for the Rust gates.
+**Superseded the same day.** With `cargo_vendor = true` (REL-24) the pack also carries the crates,
+and restore wires a sandbox-owned `CARGO_HOME` whose `config.toml` replaces `crates-io` with
+`.pixi-sandbox/vendor`. `cargo check`, `cargo clippy -D warnings` and `cargo test` then all run with
+`crates.io` unreachable, and `pixi run gates` exits 0 — measured, 11 tests passing.
+
+Two facts to keep: the pack grew to 748 MiB and a 1.3 GB clone (vendor is 272 MiB, 36% of payload),
+and `turbo` 2 runs tasks in strict env mode, so `CARGO_HOME` reaches `cargo` only because
+`turbo.json` lists it in `globalPassThroughEnv`. Without that entry the lint task silently falls
+back to the network.
+
+Before REL-24 the limit was: `cargo clippy`, `cargo check` and `cargo test` did not run locally,
+because the dependencies were not vendored and offline resolution stopped at `no matching package
+named proptest found`.
 
 **Size caution.** An unpacked environment is ~1.8 GB. Restore into `/tmp` or another path outside
 the repository; a restore inside the workspace would swamp the session snapshot.

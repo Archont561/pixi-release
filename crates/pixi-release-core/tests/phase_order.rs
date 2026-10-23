@@ -17,8 +17,14 @@ fn parse_phase(name: &str) -> ReleasePhase {
 
 #[then("{from} may move to {to}: {allowed}")]
 fn transition_is_allowed(from: String, to: String, allowed: bool) {
-    assert_eq!(can_transition(parse_phase(&from), parse_phase(&to)), allowed);
+    assert_eq!(
+        can_transition(parse_phase(&from), parse_phase(&to)),
+        allowed
+    );
 }
 
+// rstest-bdd injects one case per Examples row, so the scenario function declares one
+// parameter per column. The underscore names match the headers after normalization and
+// keep the injected values unused, because every assertion lives in the step above.
 #[scenario(path = "tests/features/phase_order.feature")]
-fn phase_order() {}
+fn phase_order(_from: String, _to: String, _allowed: String) {}

@@ -30,10 +30,5 @@ jobs:
           fi
           git config user.name "pixi-release lock"
           git config user.email "lock@example.invalid"
-          git commit -m "chore(deps): commit the resolved Cargo.lock
-
-The committed lockfile listed only the four workspace members, so every
-cargo gate re-resolved 209 packages and the Rust gates were not pinned by
-a reviewed artefact (REL-21). Generated on a runner because crates.io is
-unreachable from the authoring sandbox."
+          git commit -m "chore(deps): commit the resolved Cargo.lock (REL-21)"
           git push

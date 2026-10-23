@@ -217,189 +217,189 @@ fmt exit=0
       Adding zerovec-derive v0.11.7
       Adding zmij v1.0.23
  Downloading crates ...
-  Downloaded block-buffer v0.12.1
-  Downloaded bit-set v0.11.1
-  Downloaded ambient-authority v0.0.2
-  Downloaded basic-toml v0.1.10
-  Downloaded bit-vec v0.10.1
-  Downloaded digest v0.11.3
-  Downloaded autocfg v1.5.1
-  Downloaded bitflags v2.13.2
-  Downloaded borsh v1.8.1
-  Downloaded aho-corasick v1.1.5
-  Downloaded arc-swap v1.9.3
-  Downloaded futures-util v0.3.34
-  Downloaded convert_case v0.12.0
-  Downloaded rstest-bdd-policy v0.6.0
-  Downloaded litemap v0.8.3
-  Downloaded futures-core v0.3.34
   Downloaded allocator-api2 v0.2.21
-  Downloaded inventory v0.3.25
-  Downloaded toml v0.5.11
-  Downloaded futures-task v0.3.34
-  Downloaded icu_provider v2.4.0
-  Downloaded icu_locale_fallback_data v2.4.0
-  Downloaded link-section v0.19.3
-  Downloaded equivalent v1.0.3
-  Downloaded i18n-config v0.4.8
-  Downloaded linktime-proc-macro v0.2.3
-  Downloaded syn v3.0.9
-  Downloaded getrandom v0.4.3
-  Downloaded rand_xorshift v0.5.0
-  Downloaded rstest v0.26.1
-  Downloaded crypto-common v0.2.2
-  Downloaded glob v0.3.4
-  Downloaded newt-hype v0.2.0
-  Downloaded peg v0.6.3
-  Downloaded rstest-bdd v0.6.0
-  Downloaded cargo_metadata v0.23.1
-  Downloaded futures-macro v0.3.34
-  Downloaded maybe-owned v0.3.4
-  Downloaded borsh-derive v1.8.1
-  Downloaded cpufeatures v0.3.1
-  Downloaded gherkin v0.16.0
-  Downloaded hashbrown v0.17.1
-  Downloaded indexmap v2.14.2
-  Downloaded ipnet v2.12.2
-  Downloaded const-oid v0.10.2
-  Downloaded fluent-syntax v0.12.0
-  Downloaded futures-timer v3.0.4
-  Downloaded hybrid-array v0.4.15
-  Downloaded io-lifetimes v3.0.1
-  Downloaded itoa v1.0.18
-  Downloaded parking_lot_core v0.9.12
-  Downloaded pin-project-lite v0.2.17
-  Downloaded cfg_aliases v0.2.2
-  Downloaded derive_more v2.1.1
+  Downloaded ambient-authority v0.0.2
+  Downloaded aho-corasick v1.1.5
+  Downloaded autocfg v1.5.1
+  Downloaded arc-swap v1.9.3
   Downloaded errno v0.3.14
-  Downloaded i18n-embed-impl v0.8.4
-  Downloaded icu_locale_core v2.4.0
-  Downloaded lock_api v0.4.14
-  Downloaded fluent v0.17.0
+  Downloaded block-buffer v0.12.1
+  Downloaded cpufeatures v0.3.1
+  Downloaded quote v1.0.47
+  Downloaded cfg-if v1.0.5
+  Downloaded fnv v1.0.7
+  Downloaded futures-macro v0.3.34
+  Downloaded futures-task v0.3.34
+  Downloaded fluent-langneg v0.13.1
   Downloaded fs-set-times v0.20.3
-  Downloaded log v0.4.34
-  Downloaded mime v0.3.17
-  Downloaded once_cell v1.21.4
-  Downloaded parking_lot v0.12.5
-  Downloaded peg-macros v0.6.3
   Downloaded peg-runtime v0.6.3
   Downloaded proc-macro-hack v0.5.20+deprecated
-  Downloaded proc-macro2 v1.0.107
-  Downloaded relative-path v1.9.3
-  Downloaded scopeguard v1.2.0
-  Downloaded serde_core v1.0.229
-  Downloaded tempfile v3.27.0
-  Downloaded thiserror-impl v1.0.69
-  Downloaded camino v1.2.6
-  Downloaded core_detect v1.0.0
-  Downloaded fastrand v2.5.0
-  Downloaded i18n-embed v0.16.0
-  Downloaded io-lifetimes v2.0.4
-  Downloaded memchr v2.8.3
-  Downloaded quote v1.0.47
-  Downloaded rand v0.10.3
-  Downloaded regex-automata v0.4.18
-  Downloaded rstest-bdd-macros v0.6.0
-  Downloaded rust-embed-utils v8.13.0
-  Downloaded rstest_macros v0.26.1
-  Downloaded rusty-fork v0.3.1
-  Downloaded smawk v0.3.3
-  Downloaded cfg-if v1.0.5
-  Downloaded heck v0.5.0
-  Downloaded proc-macro-crate v3.5.0
-  Downloaded cargo-platform v0.3.3
-  Downloaded rustc_version v0.4.1
-  Downloaded tracing-attributes v0.1.31
-  Downloaded type-map v0.5.1
-  Downloaded typed-builder v0.23.2
-  Downloaded rstest-bdd-patterns v0.6.0
-  Downloaded sha2 v0.11.1
-  Downloaded utf8_iter v1.0.4
-  Downloaded fnv v1.0.7
-  Downloaded zerovec-derive v0.11.7
-  Downloaded rand_core v0.10.1
-  Downloaded regex v1.13.1
-  Downloaded rstest-bdd-harness v0.6.0
-  Downloaded same-file v1.0.6
-  Downloaded quick-error v1.2.3
-  Downloaded fluent-langneg v0.13.1
-  Downloaded intl_pluralrules v7.0.2
-  Downloaded proc-macro-error3 v3.1.1
-  Downloaded smallvec v1.16.3
   Downloaded find-crate v0.6.3
+  Downloaded equivalent v1.0.3
   Downloaded intl-memoizer v0.5.3
   Downloaded potential_utf v0.1.6
+  Downloaded i18n-config v0.4.8
+  Downloaded intl_pluralrules v7.0.2
+  Downloaded newt-hype v0.2.0
+  Downloaded proc-macro-crate v3.5.0
+  Downloaded bit-vec v0.10.1
+  Downloaded cfg_aliases v0.2.2
+  Downloaded fluent v0.17.0
+  Downloaded futures-core v0.3.34
+  Downloaded icu_locale_fallback_data v2.4.0
+  Downloaded maybe-owned v0.3.4
+  Downloaded mime v0.3.17
+  Downloaded peg v0.6.3
+  Downloaded cargo-platform v0.3.3
+  Downloaded crypto-common v0.2.2
+  Downloaded heck v0.5.0
+  Downloaded inventory v0.3.25
+  Downloaded itoa v1.0.18
   Downloaded proc-macro-error-attr3 v3.1.1
-  Downloaded rustix v1.1.5
-  Downloaded rustversion v1.0.23
-  Downloaded synstructure v0.14.0
-  Downloaded sys-locale v0.3.2
-  Downloaded zerofrom-derive v0.1.8
+  Downloaded i18n-embed-impl v0.8.4
+  Downloaded rstest v0.26.1
+  Downloaded cargo_metadata v0.23.1
+  Downloaded fastrand v2.5.0
+  Downloaded fluent-syntax v0.12.0
+  Downloaded lock_api v0.4.14
+  Downloaded quick-error v1.2.3
   Downloaded displaydoc v0.2.7
   Downloaded foldhash v0.2.0
+  Downloaded glob v0.3.4
+  Downloaded i18n-embed v0.16.0
+  Downloaded ipnet v2.12.2
+  Downloaded peg-macros v0.6.3
+  Downloaded bit-set v0.11.1
+  Downloaded chacha20 v0.10.2
+  Downloaded convert_case v0.12.0
+  Downloaded digest v0.11.3
   Downloaded icu_locale_fallback v2.4.0
   Downloaded mime_guess v2.0.5
-  Downloaded proptest v1.12.0
-  Downloaded regex-syntax v0.8.11
-  Downloaded serde_derive v1.0.229
-  Downloaded slab v0.4.12
-  Downloaded textwrap v0.16.4
-  Downloaded zerovec v0.11.9
-  Downloaded cap-std v4.0.3
+  Downloaded core_detect v1.0.0
+  Downloaded pin-project-lite v0.2.17
+  Downloaded io-lifetimes v3.0.1
+  Downloaded linktime-proc-macro v0.2.3
+  Downloaded camino v1.2.6
+  Downloaded futures-timer v3.0.4
+  Downloaded hybrid-array v0.4.15
+  Downloaded litemap v0.8.3
+  Downloaded once_cell v1.21.4
+  Downloaded parking_lot v0.12.5
   Downloaded fluent-bundle v0.16.0
-  Downloaded io-extras v0.19.0
-  Downloaded self_cell v1.3.0
-  Downloaded tokio-macros v2.7.2
-  Downloaded typed-builder-macro v0.23.2
-  Downloaded unicode-width v0.2.2
-  Downloaded chacha20 v0.10.2
+  Downloaded io-lifetimes v2.0.4
+  Downloaded parking_lot_core v0.9.12
+  Downloaded relative-path v1.9.3
+  Downloaded gherkin v0.16.0
+  Downloaded basic-toml v0.1.10
+  Downloaded bitflags v2.13.2
+  Downloaded borsh-derive v1.8.1
   Downloaded ctor v1.0.13
-  Downloaded num-traits v0.2.19
-  Downloaded syn v2.0.119
-  Downloaded tinystr v0.8.5
+  Downloaded cap-std v4.0.3
+  Downloaded const-oid v0.10.2
+  Downloaded icu_provider v2.4.0
+  Downloaded io-extras v0.19.0
+  Downloaded log v0.4.34
+  Downloaded proc-macro-error3 v3.1.1
+  Downloaded proc-macro2 v1.0.107
+  Downloaded getrandom v0.4.3
+  Downloaded icu_locale_core v2.4.0
+  Downloaded borsh v1.8.1
   Downloaded bytes v1.12.1
-  Downloaded zerofrom v0.1.8
   Downloaded cap-primitives v4.0.3
+  Downloaded num-traits v0.2.19
+  Downloaded derive_more v2.1.1
   Downloaded derive_more-impl v2.1.1
   Downloaded icu_collections v2.4.0
+  Downloaded indexmap v2.14.2
+  Downloaded link-section v0.19.3
+  Downloaded memchr v2.8.3
+  Downloaded rand v0.10.3
+  Downloaded rstest-bdd-policy v0.6.0
+  Downloaded hashbrown v0.17.1
+  Downloaded futures-util v0.3.34
+  Downloaded proptest v1.12.0
   Downloaded rustc-hash v2.1.3
-  Downloaded unic-langid-macros-impl v0.9.6
-  Downloaded toml_datetime v1.1.2+spec-1.1.0
-  Downloaded toml_parser v1.1.5+spec-1.1.0
-  Downloaded unarray v0.1.4
-  Downloaded walkdir v2.5.0
-  Downloaded yoke v0.8.4
-  Downloaded zmij v1.0.23
-  Downloaded rust-embed-impl v8.13.0
-  Downloaded unicase v2.10.0
-  Downloaded unicode-ident v1.0.27
+  Downloaded self_cell v1.3.0
   Downloaded libc v0.2.191
-  Downloaded stable_deref_trait v1.2.1
-  Downloaded unic-langid v0.9.6
-  Downloaded wait-timeout v0.2.1
-  Downloaded thiserror v1.0.69
-  Downloaded thiserror-impl v2.0.21
+  Downloaded rust-embed-utils v8.13.0
+  Downloaded rustc_version v0.4.1
+  Downloaded unarray v0.1.4
+  Downloaded scopeguard v1.2.0
+  Downloaded zerofrom-derive v0.1.8
   Downloaded unic-langid-macros v0.9.6
-  Downloaded semver v1.0.28
-  Downloaded yoke-derive v0.8.4
-  Downloaded writeable v0.6.4
-  Downloaded zerotrie v0.2.5
+  Downloaded stable_deref_trait v1.2.1
+  Downloaded zerofrom v0.1.8
+  Downloaded tokio-macros v2.7.2
+  Downloaded utf8_iter v1.0.4
+  Downloaded sys-locale v0.3.2
+  Downloaded type-map v0.5.1
+  Downloaded unic-langid v0.9.6
+  Downloaded unic-langid-macros-impl v0.9.6
+  Downloaded rust-embed-impl v8.13.0
+  Downloaded thiserror-impl v2.0.21
+  Downloaded toml_datetime v1.1.2+spec-1.1.0
+  Downloaded wait-timeout v0.2.1
+  Downloaded rusty-fork v0.3.1
+  Downloaded rand_xorshift v0.5.0
+  Downloaded same-file v1.0.6
+  Downloaded typed-builder v0.23.2
+  Downloaded rstest-bdd-patterns v0.6.0
   Downloaded rustix-linux-procfs v0.1.1
+  Downloaded rustversion v1.0.23
+  Downloaded synstructure v0.14.0
   Downloaded thiserror v2.0.21
+  Downloaded typed-builder-macro v0.23.2
+  Downloaded walkdir v2.5.0
+  Downloaded yoke-derive v0.8.4
+  Downloaded zmij v1.0.23
+  Downloaded linux-raw-sys v0.12.1
+  Downloaded icu_segmenter_data v2.4.0
+  Downloaded writeable v0.6.4
+  Downloaded rand_core v0.10.1
+  Downloaded slab v0.4.12
+  Downloaded smawk v0.3.3
+  Downloaded thiserror-impl v1.0.69
+  Downloaded unicase v2.10.0
+  Downloaded zerovec-derive v0.11.7
+  Downloaded rstest-bdd-harness v0.6.0
+  Downloaded semver v1.0.28
+  Downloaded yoke v0.8.4
+  Downloaded tinystr v0.8.5
+  Downloaded tempfile v3.27.0
+  Downloaded thiserror v1.0.69
+  Downloaded toml_parser v1.1.5+spec-1.1.0
+  Downloaded unicode-ident v1.0.27
+  Downloaded sha2 v0.11.1
+  Downloaded smallvec v1.16.3
+  Downloaded tracing-attributes v0.1.31
+  Downloaded serde_derive v1.0.229
+  Downloaded textwrap v0.16.4
+  Downloaded toml v0.5.11
+  Downloaded rstest_macros v0.26.1
+  Downloaded serde_core v1.0.229
   Downloaded tracing-core v0.1.36
   Downloaded toml_edit v0.25.17+spec-1.1.0
-  Downloaded typenum v1.20.1
-  Downloaded unic-langid-impl v0.9.6
-  Downloaded unicode-segmentation v1.13.3
   Downloaded serde v1.0.229
-  Downloaded rust-embed v8.13.0
+  Downloaded unic-langid-impl v0.9.6
+  Downloaded zerotrie v0.2.5
+  Downloaded icu_segmenter v2.4.0
+  Downloaded typenum v1.20.1
+  Downloaded unicode-segmentation v1.13.3
+  Downloaded regex v1.13.1
+  Downloaded zerovec v0.11.9
   Downloaded serde_json v1.0.154
   Downloaded winnow v1.0.4
-  Downloaded tokio v1.54.1
+  Downloaded rstest-bdd-macros v0.6.0
+  Downloaded rstest-bdd v0.6.0
+  Downloaded regex-syntax v0.8.11
+  Downloaded unicode-width v0.2.2
+  Downloaded syn v3.0.9
+  Downloaded syn v2.0.119
+  Downloaded rustix v1.1.5
   Downloaded tracing v0.1.44
-  Downloaded icu_segmenter_data v2.4.0
-  Downloaded linux-raw-sys v0.12.1
-  Downloaded icu_segmenter v2.4.0
+  Downloaded regex-automata v0.4.18
+  Downloaded rust-embed v8.13.0
+  Downloaded tokio v1.54.1
    Compiling proc-macro2 v1.0.107
    Compiling unicode-ident v1.0.27
    Compiling quote v1.0.47
@@ -407,22 +407,22 @@ fmt exit=0
    Compiling serde v1.0.229
    Compiling stable_deref_trait v1.2.1
    Compiling memchr v2.8.3
-   Compiling thiserror v2.0.21
    Compiling zmij v1.0.23
    Compiling icu_locale_fallback_data v2.4.0
+   Compiling thiserror v2.0.21
    Compiling icu_segmenter_data v2.4.0
     Checking cfg-if v1.0.5
    Compiling proc-macro-hack v0.5.20+deprecated
    Compiling libc v0.2.191
    Compiling serde_json v1.0.154
-   Compiling itoa v1.0.18
    Compiling syn v3.0.9
    Compiling syn v2.0.119
+   Compiling itoa v1.0.18
    Compiling semver v1.0.28
     Checking writeable v0.6.4
    Compiling typenum v1.20.1
-    Checking smallvec v1.16.3
    Compiling synstructure v0.14.0
+    Checking smallvec v1.16.3
    Compiling hybrid-array v0.4.15
    Compiling peg-runtime v0.6.3
    Compiling peg-macros v0.6.3
@@ -434,62 +434,62 @@ fmt exit=0
    Compiling zerofrom v0.1.8
    Compiling serde_derive v1.0.229
    Compiling yoke v0.8.4
-   Compiling zerovec v0.11.9
    Compiling thiserror-impl v2.0.21
-   Compiling tinystr v0.8.5
+   Compiling zerovec v0.11.9
+    Checking tinystr v0.8.5
     Checking unic-langid-impl v0.9.6
-   Compiling heck v0.5.0
    Compiling litemap v0.8.3
+   Compiling heck v0.5.0
    Compiling icu_locale_core v2.4.0
-    Checking potential_utf v0.1.6
+   Compiling potential_utf v0.1.6
     Checking zerotrie v0.2.5
-   Compiling crypto-common v0.2.2
    Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
    Compiling rustc_version v0.4.1
-   Compiling const-oid v0.10.2
-   Compiling gherkin v0.16.0
-   Compiling same-file v1.0.6
-   Compiling unic-langid-macros-impl v0.9.6
-    Checking rand_core v0.10.1
-   Compiling rustix v1.1.5
    Compiling unicase v2.10.0
-   Compiling once_cell v1.21.4
-    Checking unic-langid-macros v0.9.6
-    Checking cpufeatures v0.3.1
-    Checking unic-langid v0.9.6
+   Compiling rustix v1.1.5
+   Compiling gherkin v0.16.0
    Compiling thiserror v1.0.69
-   Compiling mime_guess v2.0.5
-   Compiling walkdir v2.5.0
+   Compiling unic-langid-macros-impl v0.9.6
+   Compiling once_cell v1.21.4
+    Checking rand_core v0.10.1
+   Compiling const-oid v0.10.2
+   Compiling same-file v1.0.6
+    Checking cpufeatures v0.3.1
    Compiling digest v0.11.3
+   Compiling walkdir v2.5.0
+    Checking unic-langid-macros v0.9.6
+    Checking unic-langid v0.9.6
+   Compiling mime_guess v2.0.5
    Compiling icu_provider v2.4.0
    Compiling thiserror-impl v1.0.69
    Compiling aho-corasick v1.1.5
-   Compiling utf8_iter v1.0.4
-   Compiling camino v1.2.6
-   Compiling winnow v1.0.4
    Compiling io-lifetimes v2.0.4
-   Compiling getrandom v0.4.3
-   Compiling io-lifetimes v3.0.1
-   Compiling linux-raw-sys v0.12.1
    Compiling regex-syntax v0.8.11
    Compiling equivalent v1.0.3
-   Compiling bitflags v2.13.2
+   Compiling linux-raw-sys v0.12.1
    Compiling hashbrown v0.17.1
+   Compiling winnow v1.0.4
+   Compiling getrandom v0.4.3
     Checking rustc-hash v2.1.3
-    Checking type-map v0.5.1
+    Checking utf8_iter v1.0.4
+   Compiling bitflags v2.13.2
+   Compiling camino v1.2.6
+   Compiling io-lifetimes v3.0.1
    Compiling toml_parser v1.1.5+spec-1.1.0
-   Compiling indexmap v2.14.2
-    Checking icu_collections v2.4.0
-   Compiling sha2 v0.11.1
+   Compiling icu_collections v2.4.0
    Compiling regex-automata v0.4.18
-   Compiling icu_locale_fallback v2.4.0
+   Compiling sha2 v0.11.1
+    Checking type-map v0.5.1
+   Compiling indexmap v2.14.2
+    Checking icu_locale_fallback v2.4.0
    Compiling tracing-attributes v0.1.31
    Compiling io-extras v0.19.0
-   Compiling mime v0.3.17
-   Compiling rustversion v1.0.23
-   Compiling parking_lot_core v0.9.12
-   Compiling toml_datetime v1.1.2+spec-1.1.0
     Checking pin-project-lite v0.2.17
+   Compiling parking_lot_core v0.9.12
+   Compiling rustversion v1.0.23
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling mime v0.3.17
    Compiling toml_edit v0.25.17+spec-1.1.0
    Compiling icu_segmenter v2.4.0
    Compiling regex v1.13.1
@@ -500,128 +500,87 @@ fmt exit=0
    Compiling basic-toml v0.1.10
    Compiling toml v0.5.11
     Checking fluent-syntax v0.12.0
-    Checking self_cell v1.3.0
-   Compiling unicode-width v0.2.2
+   Compiling autocfg v1.5.1
+    Checking scopeguard v1.2.0
     Checking smawk v0.3.3
    Compiling cap-primitives v4.0.3
+    Checking self_cell v1.3.0
+   Compiling unicode-width v0.2.2
    Compiling log v0.4.34
-    Checking scopeguard v1.2.0
-   Compiling autocfg v1.5.1
-    Checking textwrap v0.16.4
-    Checking lock_api v0.4.14
    Compiling i18n-config v0.4.8
+   Compiling textwrap v0.16.4
     Checking peg v0.6.3
-   Compiling num-traits v0.2.19
-   Compiling find-crate v0.6.3
     Checking fluent-bundle v0.16.0
-   Compiling fs-set-times v0.20.3
+   Compiling find-crate v0.6.3
+    Checking lock_api v0.4.14
+   Compiling num-traits v0.2.19
    Compiling rust-embed-impl v8.13.0
+   Compiling fs-set-times v0.20.3
    Compiling proc-macro-crate v3.5.0
    Compiling rustix-linux-procfs v0.1.1
    Compiling tracing-core v0.1.36
    Compiling rstest_macros v0.26.1
-   Compiling typed-builder v0.23.2
+    Checking typed-builder v0.23.2
    Compiling cargo-platform v0.3.3
-   Compiling cap-std v4.0.3
-   Compiling ipnet v2.12.2
    Compiling ambient-authority v0.0.2
    Compiling maybe-owned v0.3.4
     Checking fastrand v2.5.0
+   Compiling cap-std v4.0.3
+   Compiling ipnet v2.12.2
     Checking tempfile v3.27.0
-   Compiling tracing v0.1.44
    Compiling cargo_metadata v0.23.1
+   Compiling tracing v0.1.44
     Checking arc-swap v1.9.3
-    Checking rust-embed v8.13.0
     Checking parking_lot v0.12.5
-    Checking fluent v0.17.0
+    Checking rust-embed v8.13.0
    Compiling i18n-embed-impl v0.8.4
+    Checking fluent v0.17.0
    Compiling rstest-bdd-macros v0.6.0
-   Compiling tokio-macros v2.7.2
    Compiling futures-macro v0.3.34
+   Compiling tokio-macros v2.7.2
    Compiling derive_more-impl v2.1.1
     Checking wait-timeout v0.2.1
    Compiling proc-macro-error-attr3 v3.1.1
-   Compiling unicode-segmentation v1.13.3
-    Checking link-section v0.19.3
     Checking quick-error v1.2.3
-    Checking allocator-api2 v0.2.21
+   Compiling glob v0.3.4
+    Checking slab v0.4.12
     Checking sys-locale v0.3.2
+   Compiling relative-path v1.9.3
+    Checking link-section v0.19.3
+    Checking allocator-api2 v0.2.21
+    Checking fnv v1.0.7
+    Checking bit-vec v0.10.1
+   Compiling linktime-proc-macro v0.2.3
+    Checking foldhash v0.2.0
+   Compiling unicode-segmentation v1.13.3
     Checking futures-core v0.3.34
     Checking futures-task v0.3.34
-    Checking foldhash v0.2.0
-   Compiling linktime-proc-macro v0.2.3
-   Compiling glob v0.3.4
-    Checking fnv v1.0.7
-   Compiling relative-path v1.9.3
-    Checking slab v0.4.12
-    Checking bit-vec v0.10.1
-    Checking derive_more v2.1.1
     Checking futures-util v0.3.34
+    Checking derive_more v2.1.1
     Checking bit-set v0.11.1
+   Compiling convert_case v0.12.0
     Checking ctor v1.0.13
     Checking rusty-fork v0.3.1
     Checking i18n-embed v0.16.0
-   Compiling convert_case v0.12.0
-   Compiling proc-macro-error3 v3.1.1
     Checking tokio v1.54.1
-    Checking rstest-bdd-patterns v0.6.0
+   Compiling proc-macro-error3 v3.1.1
+   Compiling rstest-bdd-patterns v0.6.0
    Compiling rstest-bdd-harness v0.6.0
     Checking rand v0.10.3
     Checking chacha20 v0.10.2
     Checking rand_xorshift v0.5.0
-    Checking unarray v0.1.4
     Checking rstest-bdd-policy v0.6.0
-    Checking futures-timer v3.0.4
    Compiling newt-hype v0.2.0
+    Checking unarray v0.1.4
     Checking core_detect v1.0.0
+    Checking futures-timer v3.0.4
     Checking inventory v0.3.25
-    Checking rstest v0.26.1
     Checking proptest v1.12.0
     Checking rstest-bdd v0.6.0
+    Checking rstest v0.26.1
     Checking pixi-release-core v0.1.0 (/home/runner/work/pixi-release/pixi-release/crates/pixi-release-core)
     Checking pixi-release-git v0.1.0 (/home/runner/work/pixi-release/pixi-release/crates/pixi-release-git)
     Checking xtask v0.1.0 (/home/runner/work/pixi-release/pixi-release/crates/xtask)
     Checking pixi-release v0.1.0 (/home/runner/work/pixi-release/pixi-release/crates/pixi-release)
-error: used underscore-prefixed binding
-  --> crates/pixi-release-core/tests/phase_order.rs:30:16
-   |
-30 | fn phase_order(_from: String, _to: String, _allowed: String) {}
-   |                ^^^^^
-   |
-note: binding is defined here
-  --> crates/pixi-release-core/tests/phase_order.rs:30:16
-   |
-30 | fn phase_order(_from: String, _to: String, _allowed: String) {}
-   |                ^^^^^
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#used_underscore_binding
-   = note: `-D clippy::used-underscore-binding` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_binding)]`
-
-error: used underscore-prefixed binding
-  --> crates/pixi-release-core/tests/phase_order.rs:30:31
-   |
-30 | fn phase_order(_from: String, _to: String, _allowed: String) {}
-   |                               ^^^
-   |
-note: binding is defined here
-  --> crates/pixi-release-core/tests/phase_order.rs:30:31
-   |
-30 | fn phase_order(_from: String, _to: String, _allowed: String) {}
-   |                               ^^^
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#used_underscore_binding
-
-error: used underscore-prefixed binding
-  --> crates/pixi-release-core/tests/phase_order.rs:30:44
-   |
-30 | fn phase_order(_from: String, _to: String, _allowed: String) {}
-   |                                            ^^^^^^^^
-   |
-note: binding is defined here
-  --> crates/pixi-release-core/tests/phase_order.rs:30:44
-   |
-30 | fn phase_order(_from: String, _to: String, _allowed: String) {}
-   |                                            ^^^^^^^^
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#used_underscore_binding
-
-error: could not compile `pixi-release-core` (test "phase_order") due to 3 previous errors
-clippy exit=101
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 33.54s
+clippy exit=0

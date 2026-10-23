@@ -48,11 +48,11 @@ pub fn build_dummy_repo(name: &str) -> DummyRepo {
         .expect("temp dir should be created");
     let path = dir.path().to_path_buf();
 
-    git_output(&path, &["init", "--quiet", "--initial-branch=main"]);
+    let _ = git_output(&path, &["init", "--quiet", "--initial-branch=main"]);
     std::fs::write(path.join("pixi.toml"), "[workspace]\nname = \"dummy\"\n")
         .expect("pixi.toml should be written");
-    git_output(&path, &["add", "pixi.toml"]);
-    git_output(
+    let _ = git_output(&path, &["add", "pixi.toml"]);
+    let _ = git_output(
         &path,
         &[
             "-c",

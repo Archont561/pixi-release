@@ -18,6 +18,8 @@ workspace = true
 # domain behaviour with no I/O; serde is only the decoder for that document.
 serde = { workspace = true, features = ["derive"] }
 toml = { workspace = true }
+# A plan is canonical JSON (`doc-2` §2.3); serialisation is domain behaviour, not presentation.
+serde_json = { workspace = true }
 
 [dev-dependencies]
 rstest.workspace = true

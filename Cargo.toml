@@ -27,6 +27,7 @@ pedantic = "warn"
 pixi-release-core = { path = "crates/pixi-release-core", version = "0.1.0" }
 pixi-release-git = { path = "crates/pixi-release-git", version = "0.1.0" }
 serde = "1.0.229"
+serde_json = "1.0.154"
 sha2 = "0.11.1"
 toml = "0.5.11"
 rstest = "0.26.1"

@@ -3,7 +3,7 @@ id: doc-7
 title: Agent sandbox environment
 type: other
 created_date: '2026-10-20 17:55'
-updated_date: '2026-10-23 18:51'
+updated_date: '2026-10-23 20:37'
 ---
 ## Purpose
 
@@ -108,3 +108,15 @@ named proptest found`.
 
 **Size caution.** An unpacked environment is ~1.8 GB. Restore into `/tmp` or another path outside
 the repository; a restore inside the workspace would swamp the session snapshot.
+
+## Update 2026-10-23 (second session) — the session branch is local until pushed (✅ measured)
+
+The restore recipe clones the repository, so `git checkout <session-branch>` in the scratch clone
+fails while that branch exists only locally, which is how every Arena session branch starts. The
+sequence that works: `git clone` the default branch, `restore` into it, then copy the working tree
+across with `tar` (`rsync` is not installed here).
+
+Also measured, correcting the row above: the pack carries `pixi` and `pixi-sandbox` itself under
+`.pixi-sandbox/tools/linux-64/`, so a restore needs nothing from GitHub Releases.
+`release-assets.githubusercontent.com` answers `000` from this sandbox, and downloading `pixi`
+from a release asset is a dead end — not a blocker, because the pack already has it.

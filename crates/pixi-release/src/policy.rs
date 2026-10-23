@@ -9,9 +9,8 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use pixi_release_core::config::{
-    ConvcoEvidence, PolicyContext, ReleasePolicy, TargetPolicy, VersionSource,
-};
+use pixi_release_core::config::{ConvcoEvidence, PolicyContext, ReleasePolicy};
+use pixi_release_core::plan::Bump;
 use sha2::{Digest, Sha256};
 
 /// Locates the repository facts the parser needs. Working-directory relative by design: the
@@ -39,6 +38,16 @@ pub fn load(path: &str, context: PolicyContext) -> Result<ReleasePolicy, String>
     })
 }
 
+/// The `sha256:` digest of the policy file the plan was built under (`decision-3`).
+///
+/// # Errors
+///
+/// Returns a message when the file cannot be read.
+pub fn digest(path: &str) -> Result<String, String> {
+    let bytes = fs::read(path).map_err(|error| format!("policy: {path}: {error}"))?;
+    Ok(format!("sha256:{}", sha256_hex(&bytes)))
+}
+
 /// Collects Convco evidence: its version, and the digests of the configuration it read.
 ///
 /// # Errors
@@ -56,6 +65,41 @@ pub fn convco_evidence(version: Option<&str>) -> Result<ConvcoEvidence, String> 
         }
     }
     ConvcoEvidence::new(version, hashes).map_err(|error| format!("plan: {error}"))
+}
+
+/// Asks Convco for the next version, so the plan never derives one itself (`decision-6`).
+///
+/// # Errors
+///
+/// Returns Convco's own message when the tool is missing or refuses to answer — a repository with
+/// no releasable commits is a refusal, not a fallback.
+pub fn convco_next_version(bump: Bump) -> Result<String, String> {
+    let mut command = Command::new("convco");
+    command.arg("version").arg("--bump");
+    match bump {
+        Bump::Auto => {}
+        Bump::Major => {
+            command.arg("--major");
+        }
+        Bump::Minor => {
+            command.arg("--minor");
+        }
+        Bump::Patch => {
+            command.arg("--patch");
+        }
+    }
+    let output = command.output().map_err(|error| {
+        format!("plan: convco is unavailable ({error}); it derives the version (decision-6)")
+    })?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("plan: convco refused ({})", stderr.trim()));
+    }
+    let version = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    if version.is_empty() {
+        return Err("plan: convco printed no version".to_owned());
+    }
+    Ok(version)
 }
 
 fn installed_convco_version() -> Result<String, String> {
@@ -86,37 +130,4 @@ fn sha256_hex(bytes: &[u8]) -> String {
             let _ = write!(rendered, "{byte:02x}");
             rendered
         })
-}
-
-/// Renders the evidence line a plan records.
-#[must_use]
-pub fn render_evidence(
-    plan: &pixi_release_core::config::PlanEvidence,
-    policy: &ReleasePolicy,
-) -> String {
-    let targets: Vec<&str> = policy.targets().iter().map(TargetPolicy::name).collect();
-    let mut line = format!(
-        "plan: schema={} version-source={} tag-format={} targets={}",
-        plan.schema(),
-        match plan.version_source() {
-            VersionSource::Convco => "convco",
-            VersionSource::Manifest => "manifest",
-        },
-        policy.tag_format(),
-        targets.join(",")
-    );
-    if let Some(convco) = plan.convco() {
-        let hashes: Vec<String> = convco
-            .config_hashes()
-            .iter()
-            .map(|(name, digest)| format!("{name}={digest}"))
-            .collect();
-        let _ = write!(
-            line,
-            " convco-version={} convco-config={}",
-            convco.version(),
-            hashes.join(",")
-        );
-    }
-    line
 }

@@ -1,19 +1,5 @@
-use pixi_release_core::{ReleasePhase, ReleasePlan, can_transition};
-use rstest::{fixture, rstest};
-
-#[fixture]
-fn plan() -> ReleasePlan {
-    ReleasePlan::new(
-        "0.1.0",
-        vec!["github-release".into(), "prefix".into(), "prefix".into()],
-    )
-}
-
-#[rstest]
-fn plan_evidence_is_deterministic(plan: ReleasePlan) {
-    assert_eq!(plan.version(), "0.1.0");
-    assert_eq!(plan.targets(), ["github-release", "prefix"]);
-}
+use pixi_release_core::{ReleasePhase, can_transition};
+use rstest::rstest;
 
 #[rstest]
 #[case(ReleasePhase::Plan, ReleasePhase::Prepare, true)]

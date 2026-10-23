@@ -1,12 +1,15 @@
 //! Thin command-line scaffold for the future `pixi release` extension.
 
+mod git;
 mod policy;
 
-use pixi_release_core::config::VersionSource;
+use std::fs;
+
+use pixi_release_core::config::{ReleasePolicy, VersionSource};
+use pixi_release_core::plan::{Bump, Plan, PlanInputs, SourceRevision, Version, VersionAuthority};
 use pixi_release_git::{FakeGit, GitProtocol};
 
-const USAGE: &str = "pixi-release <plan [--policy PATH] [--convco-version V]|prepare|cut|verify|\
-publish|resume|workflow check>";
+const USAGE: &str = "pixi-release <plan [--policy PATH] [--version V] [--bump auto|major|minor|patch] [--out PATH]|prepare|cut|verify|publish|resume|workflow check>";
 
 fn main() {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
@@ -42,64 +45,129 @@ fn run(arguments: &[String]) -> i32 {
     }
 }
 
-/// `plan` validates the authored policy and records how the version was derived. It performs no
-/// release mutation: this is the phase that only inspects (`doc-1`).
-fn plan(arguments: &[String]) -> i32 {
-    let mut policy_path = ".pixi-release.toml".to_owned();
-    let mut convco_version: Option<String> = None;
-    let mut rest = arguments.iter();
-    while let Some(argument) = rest.next() {
-        match argument.as_str() {
-            "--policy" => {
-                let Some(path) = rest.next() else {
-                    eprintln!("plan: --policy needs a path");
-                    return 2;
-                };
-                policy_path.clone_from(path);
-            }
-            "--convco-version" => {
-                let Some(version) = rest.next() else {
-                    eprintln!("plan: --convco-version needs a value");
-                    return 2;
-                };
-                convco_version = Some(version.clone());
-            }
-            other => {
-                eprintln!("plan: unknown argument `{other}`\n{USAGE}");
-                return 2;
+/// Everything `plan` accepts on the command line.
+struct PlanOptions {
+    policy_path: String,
+    convco_version: Option<String>,
+    explicit_version: Option<String>,
+    bump: Bump,
+    out: Option<String>,
+    commit: Option<String>,
+}
+
+impl PlanOptions {
+    /// Parses the flags, returning the usage message to show on a malformed invocation.
+    fn parse(arguments: &[String]) -> Result<Self, String> {
+        let mut options = Self {
+            policy_path: ".pixi-release.toml".to_owned(),
+            convco_version: None,
+            explicit_version: None,
+            bump: Bump::Auto,
+            out: None,
+            commit: None,
+        };
+        let mut rest = arguments.iter();
+        while let Some(argument) = rest.next() {
+            let value = |rest: &mut std::slice::Iter<'_, String>| {
+                rest.next()
+                    .cloned()
+                    .ok_or_else(|| format!("plan: `{argument}` needs a value"))
+            };
+            match argument.as_str() {
+                "--policy" => options.policy_path = value(&mut rest)?,
+                "--convco-version" => options.convco_version = Some(value(&mut rest)?),
+                "--version" => options.explicit_version = Some(value(&mut rest)?),
+                "--out" => options.out = Some(value(&mut rest)?),
+                "--commit" => options.commit = Some(value(&mut rest)?),
+                "--bump" => {
+                    let requested = value(&mut rest)?;
+                    options.bump = Bump::parse(&requested).ok_or_else(|| {
+                        format!("plan: `{requested}` is not one of auto, major, minor, patch")
+                    })?;
+                }
+                other => return Err(format!("plan: unknown argument `{other}`")),
             }
         }
+        Ok(options)
     }
+}
 
-    let context = policy::context();
-    let policy = match policy::load(&policy_path, context) {
-        Ok(policy) => policy,
-        Err(rendered) => {
-            eprintln!("{rendered}");
-            return 1;
+/// `plan` derives the immutable release proposal and records where every part of it came from.
+///
+/// It reads the policy and two Git facts and writes nothing but the requested `--out` file: no
+/// commit, no tag, no workflow (`doc-2` §2.3, REL-3).
+fn plan(arguments: &[String]) -> i32 {
+    let options = match PlanOptions::parse(arguments) {
+        Ok(options) => options,
+        Err(message) => {
+            eprintln!("{message}\n{USAGE}");
+            return 2;
         }
     };
-
-    let evidence = if policy.version_source() == VersionSource::Convco {
-        match policy::convco_evidence(convco_version.as_deref()) {
-            Ok(evidence) => Some(evidence),
-            Err(message) => {
-                eprintln!("{message}");
-                return 1;
-            }
-        }
-    } else {
-        None
-    };
-
-    match policy.plan_evidence(evidence) {
-        Ok(plan) => {
-            println!("{}", policy::render_evidence(&plan, &policy));
-            0
-        }
-        Err(error) => {
-            eprintln!("plan: {error}");
+    match run_plan(&options) {
+        Ok(()) => 0,
+        Err(message) => {
+            eprintln!("{message}");
             1
         }
     }
+}
+
+fn run_plan(options: &PlanOptions) -> Result<(), String> {
+    let policy = policy::load(&options.policy_path, policy::context())?;
+    let policy_digest = policy::digest(&options.policy_path)?;
+    let commit = match &options.commit {
+        Some(commit) => commit.clone(),
+        None => git::head_sha()?,
+    };
+    let source =
+        SourceRevision::new(commit, git::is_clean()?).map_err(|error| format!("plan: {error}"))?;
+    let inputs = PlanInputs {
+        source,
+        policy_digest,
+        tool_version: env!("CARGO_PKG_VERSION").to_owned(),
+    };
+    let plan = Plan::propose(&policy, inputs, resolve_authority(&policy, options)?)
+        .map_err(|error| format!("plan: {error}"))?;
+    emit(&plan, options.out.as_deref())
+}
+
+/// Decides where the version comes from, without ever deriving one itself (`decision-6`).
+fn resolve_authority(
+    policy: &ReleasePolicy,
+    options: &PlanOptions,
+) -> Result<VersionAuthority, String> {
+    if let Some(requested) = &options.explicit_version {
+        let version = Version::parse(requested).map_err(|error| format!("plan: {error}"))?;
+        return Ok(VersionAuthority::Explicit { version });
+    }
+    if policy.version_source() != VersionSource::Convco {
+        return Err(
+            "plan: project.version-source: a manifest policy needs an explicit --version"
+                .to_owned(),
+        );
+    }
+    let derived = policy::convco_next_version(options.bump)?;
+    let version = Version::parse(&derived).map_err(|error| format!("plan: {error}"))?;
+    let evidence = policy::convco_evidence(options.convco_version.as_deref())?;
+    Ok(VersionAuthority::Convco {
+        bump: options.bump,
+        version,
+        evidence,
+    })
+}
+
+/// Writes the plan where the caller asked, or prints it, and does nothing else.
+fn emit(plan: &Plan, out: Option<&str>) -> Result<(), String> {
+    if let Some(path) = out {
+        fs::write(path, plan.to_json()).map_err(|error| format!("plan: {path}: {error}"))?;
+        println!(
+            "plan: wrote {path} ({} at tag {})",
+            plan.version(),
+            plan.tag()
+        );
+    } else {
+        print!("{}", plan.to_json());
+    }
+    Ok(())
 }

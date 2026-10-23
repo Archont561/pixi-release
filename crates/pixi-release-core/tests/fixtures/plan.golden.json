@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "version": "0.2.0",
+  "tag": "v0.2.0",
+  "authority": {
+    "kind": "explicit",
+    "requested": "0.2.0"
+  },
+  "source": {
+    "commit": "9f2c1d4b7a8e6f5d3c2b1a09f8e7d6c5b4a39281",
+    "clean": true
+  },
+  "policy": {
+    "digest": "sha256:6f1c1d0b8f5f3f8f4a1e5e7c2b9d0a3f4c5e6b7a8d9e0f1a2b3c4d5e6f708192"
+  },
+  "targets": [
+    {
+      "name": "github-release",
+      "required": true
+    }
+  ],
+  "tool": {
+    "name": "pixi-release",
+    "version": "0.1.0"
+  }
+}

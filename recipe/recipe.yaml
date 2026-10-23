@@ -1,0 +1,51 @@
+# The `pixi-release` conda package: `pixi run -e package package`.
+#
+# `convco` is a **run** dependency, never a build one. The controller executes it
+# (`convco version --bump`, `convco check`) and links nothing of it (`decision-6`), so declaring
+# it here is exactly what makes `pixi global install pixi-release` resolve Convco into the plugin
+# environment — `pixi release` then works without the consumer adding anything to their own
+# `pixi.toml`. The pin is kept identical to `[workspace.dependencies] convco` in `pixi.toml`, and
+# `pixi run repo-check` fails if the two drift.
+schema_version: 1
+
+context:
+  version: "0.1.0"
+
+package:
+  name: pixi-release
+  version: ${{ version }}
+
+source:
+  path: ..
+
+build:
+  number: 0
+  script:
+    - cargo build --release --locked --package pixi-release
+    - install -D target/release/pixi-release "$PREFIX/bin/pixi-release"
+
+requirements:
+  build:
+    - rust >=1.98.1,<1.99
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+  run:
+    - convco >=0.7.2,<0.8
+    - git >=2.40
+
+tests:
+  # A run dependency that did not land is the failure this catches: the binary exists, and the
+  # tools it spawns are on `PATH` because the recipe said so.
+  - script:
+      - pixi-release --version
+      - convco --version
+      - git --version
+
+about:
+  summary: Safe release workflow controller for Pixi projects
+  license: MIT OR Apache-2.0
+  license_file:
+    - LICENSE-MIT
+    - LICENSE-APACHE
+  homepage: https://github.com/Archont561/pixi-release
+  repository: https://github.com/Archont561/pixi-release

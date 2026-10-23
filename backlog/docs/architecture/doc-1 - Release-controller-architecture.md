@@ -3,12 +3,13 @@ id: doc-1
 title: Release controller architecture
 type: specification
 created_date: '2026-10-01 00:27'
-updated_date: '2026-10-23 21:51'
+updated_date: '2026-10-23 22:14'
 tags:
   - architecture
   - release
   - approved
 ---
+
 
 
 # Release controller architecture
@@ -116,6 +117,12 @@ The controller implements `plan → prepare → cut/tag → verify/build → pub
   configuration load, command presentation, and workflow renderer entrypoints.
 
 ## Delivery mechanics
+
+The controller is delivered as a conda package built from `recipe/recipe.yaml`: `convco` is a run
+dependency there because the binary executes it and never links it (`decision-6`), so
+`pixi global install pixi-release` resolves the tool the controller spawns. The recipe is
+authored, never generated, and its version/name/pins are checked by `repo-check` against the
+manifests that own them.
 
 Pixi owns the reproducible toolchain. The root Bun workspace owns `bun x turbo run <verb>` scripts; `crates/package.json` and `docs/package.json` provide package-local work; Turbo owns ordering. CI and Lefthook invoke `pixi run <verb>` only. The self-release workflow must install a checksum-verified pinned prior `pixi-release` release rather than controlling a release with the unreleased checkout binary.
 

@@ -15,6 +15,9 @@ target/
 /pixi-sandbox.exe
 /SHA256SUMS
 
+# Conda packaging output (`pixi run -e package package`).
+output/
+
 # Local-only
 .env
 .env.*

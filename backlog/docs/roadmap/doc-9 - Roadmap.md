@@ -3,6 +3,7 @@ id: doc-9
 title: Roadmap
 type: specification
 created_date: '2026-10-20 19:06'
+updated_date: '2026-10-23 15:01'
 ---
 
 ## Status
@@ -79,3 +80,26 @@ workflow files with distinct markers, and v0.1.0 is clean-room rather than seede
 
 - `doc-3` §5 row 8 (`apps/docs/`) was removed. Row 4 (`pixi-sandbox init`) now names its owner.
 - REL-2 to REL-7 each gained a checkable proof criterion, so their milestones can close.
+
+
+## Intake of 2026-10-23 — GitHub issues #7–#10
+
+Issues #7 and #8 are the same proposal at different levels of detail, so they are read together and
+the tasks cite both. Every capability they asked for was checked against the decisions before a task
+was created; three of the five did not need one, because the specification already covers them.
+
+| Proposed in | Task | Outcome |
+|---|---|---|
+| #7 #8 §1 `pixi release reserve` | REL-13 → REL-14 | Gated: a reservation is a registry write, so `decision-9` holds it behind REL-6; the archive build stays a consumer `pixi run` task (`decision-2`) |
+| #7 #8 §2 OIDC trusted publishing | REL-13 → REL-15 | Partly specified already: `doc-2` §3.2 renders `id-token: write` with an `environment:` boundary for the channel. The per-registry trust setup is gated |
+| #7 #8 §3 polyglot two-phase build then publish | — | Already the design: `doc-2` §3.2 splits build, prove and publish with an artifact handoff, and `decision-2` keeps compilation in the repository. No task created |
+| #7 #8 §4 GitHub Release assets and `SHA256SUMS` | — | Already specified: the `stage` job in `doc-2` §3.2 uploads assets with `SHA256SUMS`, `plan.json` and `evidence.json`, then reads them back. No task created |
+| #7 #8 §5 scoped releases and milestone tag triggers | REL-16 | Conflicts with `decision-7` (one version, one tag) and `decision-4` (the annotated tag is the evidence anchor). A decision comes first |
+| #9 issue forms, PR template, PR-title check | REL-17 → REL-18 | Outside the release lane (`decision-10` §2), so gated on a scope decision |
+| #10 Starlight site, docs sync, Pages workflow | REL-19 → REL-20 | No public docs home exists (`doc-3` §1.4); gated |
+
+Milestones: the registry and per-package work stays in **m-3**, as this document already says.
+**m-4** was added for the governance and documentation surface, which is not a registry target and
+not the release lane.
+
+Version mapping is unchanged: nothing in this intake enters v0.2.0, v0.3.0 or v1.0.0.

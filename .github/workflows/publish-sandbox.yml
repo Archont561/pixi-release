@@ -5,6 +5,18 @@ name: publish sandbox
 on:
   push:
     branches: [main]
+    # Generated mirror of `[workflow].push_paths` in pixi-sandbox.toml, which is canonical.
+    # Hand-applied at pixi-sandbox 0.8.0: `init` would emit this block, but it needs the
+    # conda-forge channel this sandbox cannot reach. The next `init` or upgrade run regenerates
+    # it and REL-12's drift gate will compare the two.
+    paths:
+      - Cargo.lock
+      - Cargo.toml
+      - bun.lock
+      - package.json
+      - pixi-sandbox.toml
+      - pixi.lock
+      - pixi.toml
   # A bare `schedule:` run and a `workflow_dispatch` naming `upgrade` both route to the
   # `upgrade` job below instead of an ordinary publish — see that job's `if:` and its
   # neighbours'. Leaving `upgrade` blank on a manual dispatch keeps today's behaviour exactly.

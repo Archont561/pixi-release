@@ -3,11 +3,11 @@
   "private": true,
   "description": "Turbo facade for the pixi-release Cargo workspace",
   "scripts": {
-    "build": "cargo build --manifest-path ../Cargo.toml --workspace --release",
-    "test": "cargo test --manifest-path ../Cargo.toml --workspace",
+    "build": "cargo build --manifest-path ../Cargo.toml --workspace --release --locked",
+    "test": "cargo test --manifest-path ../Cargo.toml --workspace --locked",
     "coverage": "cargo tarpaulin --manifest-path ../Cargo.toml --workspace --out Lcov --output-dir ../target/coverage",
-    "typecheck": "cargo check --manifest-path ../Cargo.toml --workspace --all-targets",
-    "lint": "cargo fmt --manifest-path ../Cargo.toml --all --check && cargo clippy --manifest-path ../Cargo.toml --workspace --all-targets --all-features -- -D warnings",
+    "typecheck": "cargo check --manifest-path ../Cargo.toml --workspace --all-targets --locked",
+    "lint": "cargo fmt --manifest-path ../Cargo.toml --all --check && cargo clippy --manifest-path ../Cargo.toml --workspace --all-targets --all-features --locked -- -D warnings",
     "fmt": "cargo fmt --manifest-path ../Cargo.toml --all"
   }
 }

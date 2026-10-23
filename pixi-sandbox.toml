@@ -23,3 +23,35 @@ cargo_vendor = false
 name = "developer"
 environments = ["default"]
 platforms = ["linux-64"]
+
+# Path filtering. Both lists are the canonical statement of when this pack repacks; the two
+# generated workflows carry a generated mirror of them (decision-3: the workflow is a product of
+# the policy, and drift between the two is what REL-12 gates).
+#
+# A repack costs about 400 MiB of branch history, so it must run only when a transport input
+# actually changes: the sandbox config, pixi's manifest and lock, and the vendor manifests an
+# environment may read. A docs, backlog or source-only change cannot alter the packed
+# environment, so it must not repack.
+[workflow]
+push_paths = [
+  "Cargo.lock",
+  "Cargo.toml",
+  "bun.lock",
+  "package.json",
+  "pixi-sandbox.toml",
+  "pixi.lock",
+  "pixi.toml",
+]
+# The relock guard is wider on purpose: a lockfile must still be caught when it is deleted or
+# hand-edited, and `**/Cargo.toml` covers every workspace member. `.cargo/config.toml` is absent
+# here, so it is not listed.
+relock_paths = [
+  "**/Cargo.toml",
+  "Cargo.lock",
+  "Cargo.toml",
+  "bun.lock",
+  "package.json",
+  "pixi-sandbox.toml",
+  "pixi.lock",
+  "pixi.toml",
+]

@@ -11,6 +11,17 @@ name: relock
 
 on:
   pull_request:
+    # Generated mirror of `[workflow].relock_paths`, which is canonical. Hand-applied at
+    # pixi-sandbox 0.8.0 for the same reason as the publisher's push filter.
+    paths:
+      - '**/Cargo.toml'
+      - Cargo.lock
+      - Cargo.toml
+      - bun.lock
+      - package.json
+      - pixi-sandbox.toml
+      - pixi.lock
+      - pixi.toml
   workflow_dispatch:
     inputs:
       repaired_sha:

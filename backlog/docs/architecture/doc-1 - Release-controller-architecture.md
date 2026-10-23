@@ -3,7 +3,7 @@ id: doc-1
 title: Release controller architecture
 type: specification
 created_date: '2026-10-01 00:27'
-updated_date: '2026-10-04 21:10'
+updated_date: '2026-10-23 19:26'
 tags:
   - architecture
   - release
@@ -27,6 +27,36 @@ Audience boundary: the measured consumer population is `Archont561/*`, and that 
 - Convco is the sole SemVer/changelog authority when `project.version-source = "convco"`; existing `.versionrc` and `.convco` are preserved.
 - GitHub Actions workflows are generated YAML and are checked against the renderer.
 - Immutable release plans, artifact manifests, and per-target resume evidence are JSON.
+
+## Configuration contract
+
+`doc-3` §4 owns the shape. This section records what the loader enforces, so a reviewer can tell a
+policy refusal from a policy gap.
+
+- Unknown keys are refused rather than ignored, so a typo cannot silently degrade to a default.
+- Every refusal names the dotted key at fault (`schema`, `project.tag-format`, `version.manifests`,
+  `target.name`, …) and cites the decision behind the rule. One document may yield several
+  refusals at once; the first is the one the message leads with.
+- `schema` must equal `1`.
+- `project.version-source` accepts `convco` or `manifest`. `manifest` is refused while a Convco
+  configuration (`.versionrc` or `.convco`) is present: Convco stays the single SemVer and
+  changelog authority (`decision-6`).
+- `project.tag-format` must contain `{version}`, because the tag is the evidence anchor
+  (`decision-4`).
+- `version.manifests` must be non-empty; `version.lockfiles` and `version.changelog` are required;
+  no list may repeat a path or contain an empty one. `prepare` stages exactly what the policy
+  names and nothing else.
+- `gates.required`, when declared, must be non-empty: an empty list would let `cut` proceed with
+  no proof.
+- `workflows.render` admits only `auto-release` and `release` (`decision-10` §2); `ci` and `docs`
+  stay hand-written.
+- `target.name` admits only `github-release` before REL-6 (`decision-9`).
+- A `convco` plan records the Convco version and the SHA-256 digest of every configuration file
+  it read. Planning without that evidence is refused, and `manifest` mode refuses to carry it.
+
+Validation performs no I/O. The caller supplies `PolicyContext { convco_configured }` and the
+configuration digests, so the same document parses identically in a test and in a workflow, and
+nothing is read from the network or the repository by the parser itself.
 
 ## Lifecycle
 

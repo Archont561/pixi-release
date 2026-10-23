@@ -15,9 +15,17 @@
 schema = 1
 branch_prefix = "sandbox"
 
-# Keep the pack small: this environment runs tools, it does not compile a release from vendored
-# crates. `decision-8` has every release rebuild from the tagged commit on its own runner.
-cargo_vendor = false
+# Vendor the Cargo registry into the pack (ADR-6: crates land in `.pixi-sandbox/vendor/`, a
+# sibling of `envs/` and `tools/`). Restore then wires a sandbox-owned CARGO_HOME, so
+# `pixi run -- cargo build --offline` works on a machine with no crates.io access — which is the
+# exact gap that blocked local Rust gates. Vendoring is per project, not per environment: one
+# `Cargo.lock` describes every bundle.
+#
+# This requires a resolved lockfile, because the packer runs `cargo vendor --locked`. REL-21
+# replaced the stub lock with the resolved one (213 packages) for that reason; a lock that needs
+# updating makes vendoring abort and turns the publish red. `decision-8` is unaffected: releases
+# still rebuild from the tagged commit, the vendor tree only makes that possible offline.
+cargo_vendor = true
 
 [[bundle]]
 name = "developer"

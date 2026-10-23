@@ -3,7 +3,7 @@ id: doc-9
 title: Roadmap
 type: specification
 created_date: '2026-10-20 19:06'
-updated_date: '2026-10-23 15:20'
+updated_date: '2026-10-23 15:58'
 ---
 
 ## Status
@@ -49,8 +49,10 @@ that covers this task's tests". REL-7 also requires a verified N−1 self-releas
 
 ## Revisions to the existing milestones
 
-- **M0.** Scope unchanged. The exit condition is not yet demonstrated, because CI has not completed
-  green on this branch. M0 closes with REL-10, not with REL-1 alone.
+- **M0.** Scope unchanged. The exit condition was demonstrated on 2026-10-23: run 39982186413
+  completed all thirteen gate steps green on merge commit `f9de3b6`. REL-10 therefore proves its
+  first criterion; it stays open only for its Codecov-token criterion. REL-21 was added because
+  the committed `Cargo.lock` is a stub, so gates resolve dependencies fresh on every run.
 - **M1.** Renderer work (REL-5) and changelog generation through Convco (REL-8) are included. The
   open questions (REL-9) must be answered first.
 - **M2.** Evidence and publication (REL-6), the manifest schema (REL-11) and the drift gate

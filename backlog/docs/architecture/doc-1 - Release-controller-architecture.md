@@ -3,7 +3,7 @@ id: doc-1
 title: Release controller architecture
 type: specification
 created_date: '2026-10-01 00:27'
-updated_date: '2026-10-23 19:26'
+updated_date: '2026-10-23 20:37'
 tags:
   - architecture
   - release
@@ -57,6 +57,26 @@ policy refusal from a policy gap.
 Validation performs no I/O. The caller supplies `PolicyContext { convco_configured }` and the
 configuration digests, so the same document parses identically in a test and in a workflow, and
 nothing is read from the network or the repository by the parser itself.
+
+## Plan format
+
+`plan` emits canonical JSON: the same inputs give the same bytes, and the golden fixture at
+`crates/pixi-release-core/tests/fixtures/plan.golden.json` is the shape it must keep producing.
+Each plan records:
+
+- `schema`, `version` and `tag`, where the tag is `project.tag-format` with `{version}`
+  substituted.
+- `authority` — either `explicit`, where a human named the version, or `convco`, which carries the
+  Convco version, the digests of the configuration it read and the requested `bump` (`decision-6`).
+- `source` — the commit the plan was derived from and whether the worktree was clean.
+- `policy.digest` — the `sha256:` digest of `.pixi-release.toml` at derivation time
+  (`decision-3`).
+- `targets` — one row per name, sorted, so the order a policy listed them in never changes the
+  evidence.
+- `tool` — the `pixi-release` version that produced the plan.
+
+`plan` is pure with respect to the repository. It reads the policy and two Git facts and writes
+only the `--out` path it was given; it never commits, tags, or writes a workflow.
 
 ## Lifecycle
 

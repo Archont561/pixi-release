@@ -38,6 +38,7 @@ pixi run gates       # lint, type-check, test, actionlint, workflow check, repo 
 pixi run build       # Turbo builds the Rust workspace and documentation stub
 pixi run fmt         # apply all formatters
 pixi run backlog -- board
+pixi run package     # build the conda artifact into output/
 ```
 
 ## What it provides

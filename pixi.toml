@@ -55,6 +55,10 @@ workflow-check = { cmd = "cargo run --manifest-path Cargo.toml -p pixi-release -
 repo-check = { cmd = "cargo run --manifest-path Cargo.toml -p xtask -- check", description = "Owner-lane repository checks" }
 backlog = { cmd = "bun x backlog", depends-on = ["bun-install"], description = "Manage Backlog.md through its CLI" }
 
+# Builds the conda artifact described by `recipe/recipe.yaml`. `convco` is a *run* dependency of
+# that recipe (decision-6), so the artifact installs with the tool the controller executes.
+package = { cmd = "pixi exec -c conda-forge --spec 'rattler-build>=0.77,<0.78' rattler-build build --recipe recipe/recipe.yaml --output-dir output -c conda-forge", description = "Build the pixi-release conda artifact into output/" }
+
 # This is the local equivalent of the CI quality gate. Build remains a separate artifact gate.
 gates = { depends-on = ["lint", "typecheck", "test", "lint-actions", "workflow-check", "repo-check"], description = "Every required pre-merge check" }
 ci = { depends-on = ["gates", "build"], description = "Gates plus all workspace builds" }

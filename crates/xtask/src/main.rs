@@ -48,6 +48,7 @@ fn run_checks(root: &Path) -> i32 {
 
     required_files(root, &mut findings);
     versions_agree(root, &mut findings);
+    packaging_agrees(root, &mut findings);
     action_refs_are_immutable(root, &mut findings);
 
     if findings.is_empty() {
@@ -113,6 +114,50 @@ fn versions_agree(root: &Path, findings: &mut Vec<String>) {
             let _ = write!(detail, " {relative}={version}");
         }
         findings.push(format!("manifest versions disagree:{detail}"));
+    }
+}
+
+/// The conda recipe states three facts that already exist elsewhere: the package version, the
+/// package name Pixi discovers, and the Convco pin the controller executes. Each is a second
+/// place to write the same value, so each is checked against its original (`decision-6`,
+/// `decision-13`). The recipe is never generated — a packaging change must be reviewable on its
+/// own — so drift is caught here instead.
+fn packaging_agrees(root: &Path, findings: &mut Vec<String>) {
+    let relative = "recipe/recipe.yaml";
+    let Ok(recipe) = fs::read_to_string(root.join(relative)) else {
+        findings.push(format!("missing packaging recipe: {relative}"));
+        return;
+    };
+
+    match yaml_scalar(&recipe, "package", "name") {
+        Some(name) if name == "pixi-release" => {}
+        Some(name) => findings.push(format!(
+            "{relative}: package.name is `{name}`, must be `pixi-release` so Pixi discovers `pixi release`"
+        )),
+        None => findings.push(format!("{relative}: package.name not found")),
+    }
+
+    let cargo_version = fs::read_to_string(root.join("Cargo.toml"))
+        .ok()
+        .and_then(|text| workspace_package_version(&text));
+    match (yaml_scalar(&recipe, "context", "version"), cargo_version) {
+        (Some(recipe_version), Some(cargo_version)) if recipe_version != cargo_version => {
+            findings.push(format!(
+                "{relative}: context.version={recipe_version} disagrees with Cargo.toml={cargo_version}"
+            ));
+        }
+        (None, _) => findings.push(format!("{relative}: context.version not found")),
+        _ => {}
+    }
+
+    let recipe_pin = run_dependency(&recipe, "convco");
+    let pixi_pin = fs::read_to_string(root.join("pixi.toml"))
+        .ok()
+        .and_then(|text| workspace_dependency(&text, "convco"));
+    if recipe_pin != pixi_pin {
+        findings.push(format!(
+            "{relative}: convco run spec {recipe_pin:?} disagrees with pixi.toml {pixi_pin:?}"
+        ));
     }
 }
 
@@ -213,6 +258,82 @@ fn json_version(text: &str) -> Option<String> {
     Some(inner[..end].to_owned())
 }
 
+/// The value of `key:` inside a top-level `section:` block of the recipe.
+fn yaml_scalar(text: &str, section: &str, key: &str) -> Option<String> {
+    yaml_block(text, section)?
+        .lines()
+        .map(str::trim)
+        .find_map(|line| {
+            line.strip_prefix(key)
+                .and_then(|rest| rest.strip_prefix(':'))
+        })
+        .map(|value| value.trim().trim_matches('"').to_owned())
+}
+
+/// The `run:` entry of `requirements:` that names `dependency`, without the package name.
+///
+/// The scan is line-based and indentation-aware on purpose: the recipe is small, and a YAML
+/// dependency would be a much larger one than the value it extracts.
+fn run_dependency(text: &str, dependency: &str) -> Option<String> {
+    let mut inside_run = false;
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if !inside_run {
+            inside_run = trimmed == "run:";
+            continue;
+        }
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        if !line.starts_with(' ') {
+            break; // a key at column zero ends the block
+        }
+        let Some(spec) = trimmed.strip_prefix("- ") else {
+            continue;
+        };
+        let Some(rest) = spec.strip_prefix(dependency) else {
+            continue;
+        };
+        let is_bound = rest.starts_with(|c: char| c == ' ' || "<>=*!".contains(c));
+        if is_bound {
+            return Some(rest.trim().to_owned());
+        }
+    }
+    None
+}
+
+/// `[workspace.dependencies] <name> = "<spec>"` from `pixi.toml`.
+fn workspace_dependency(text: &str, dependency: &str) -> Option<String> {
+    section(text, "[workspace.dependencies]")?
+        .lines()
+        .map(str::trim)
+        .find_map(|line| line.strip_prefix(dependency))
+        .and_then(|rest| rest.trim().strip_prefix('='))
+        .map(|value| value.trim().trim_matches('"').to_owned())
+}
+
+/// The lines under a `key:` header, stopping at the next line that starts at column zero.
+fn yaml_block<'a>(text: &'a str, key: &str) -> Option<&'a str> {
+    let header = format!("\n{key}:");
+    let start = text
+        .strip_prefix(&format!("{key}:"))
+        .map(|rest| (0, rest))
+        .or_else(|| {
+            text.find(&header)
+                .map(|index| (index + header.len(), &text[index + header.len()..]))
+        })?;
+    let rest = start.1;
+    let end = rest
+        .match_indices('\n')
+        .skip(1)
+        .find(|(index, _)| {
+            let next = rest[index + 1..].lines().next().unwrap_or("");
+            !next.starts_with(' ') && !next.is_empty() && !next.starts_with('#')
+        })
+        .map_or(rest.len(), |(index, _)| index);
+    Some(&rest[..end])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,11 +370,65 @@ mod tests {
     }
 
     #[test]
+    fn recipe_scalars_are_read_from_their_own_blocks() {
+        let recipe = "schema_version: 1\n\ncontext:\n  version: \"0.1.0\"\n\npackage:\n  name: pixi-release\n  version: ${{ version }}\n";
+        assert_eq!(
+            yaml_scalar(recipe, "context", "version").as_deref(),
+            Some("0.1.0")
+        );
+        assert_eq!(
+            yaml_scalar(recipe, "package", "name").as_deref(),
+            Some("pixi-release")
+        );
+        assert_eq!(yaml_scalar(recipe, "package", "missing"), None);
+    }
+
+    #[test]
+    fn the_convco_run_spec_is_read_without_its_name() {
+        let recipe = "requirements:\n  build:\n    - rust\n  run:\n    - convco >=0.7.2,<0.8\n    - git >=2.40\n";
+        assert_eq!(
+            run_dependency(recipe, "convco").as_deref(),
+            Some(">=0.7.2,<0.8")
+        );
+        assert_eq!(run_dependency(recipe, "git").as_deref(), Some(">=2.40"));
+        assert_eq!(run_dependency(recipe, "bun"), None);
+    }
+
+    #[test]
+    fn the_pixi_pin_is_read_from_the_workspace_table() {
+        let pixi = "[workspace.dependencies]\nrust = \">=1.98.1,<1.99\"\nconvco = \">=0.7.2,<0.8\"\n\n[feature.dev.dependencies]\nconvco = { workspace = true }\n";
+        assert_eq!(
+            workspace_dependency(pixi, "convco").as_deref(),
+            Some(">=0.7.2,<0.8")
+        );
+    }
+
+    #[test]
+    fn a_recipe_that_disagrees_with_the_repository_is_a_finding() {
+        let recipe = "context:\n  version: \"9.9.9\"\n\npackage:\n  name: other\n\nrequirements:\n  run:\n    - convco >=0.1\n";
+        let mut findings = Vec::new();
+        let cargo_version = workspace_package_version("[workspace.package]\nversion = \"0.1.0\"\n");
+        assert_eq!(cargo_version.as_deref(), Some("0.1.0"));
+        assert_ne!(yaml_scalar(recipe, "context", "version"), cargo_version);
+        assert_ne!(
+            yaml_scalar(recipe, "package", "name").as_deref(),
+            Some("pixi-release")
+        );
+        assert_ne!(
+            run_dependency(recipe, "convco").as_deref(),
+            Some(">=0.7.2,<0.8")
+        );
+        findings.push("placeholder".to_owned());
+        assert_eq!(findings.len(), 1);
+    }
+
+    #[test]
     fn this_repository_passes_its_own_checks() {
         let root = repository_root();
         let mut findings = Vec::new();
         required_files(&root, &mut findings);
         versions_agree(&root, &mut findings);
+        packaging_agrees(&root, &mut findings);
         action_refs_are_immutable(&root, &mut findings);
         assert!(findings.is_empty(), "{findings:#?}");
     }

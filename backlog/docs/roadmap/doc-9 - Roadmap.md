@@ -3,7 +3,7 @@ id: doc-9
 title: Roadmap
 type: specification
 created_date: '2026-10-20 19:06'
-updated_date: '2026-10-23 15:01'
+updated_date: '2026-10-23 15:20'
 ---
 
 ## Status
@@ -80,6 +80,10 @@ workflow files with distinct markers, and v0.1.0 is clean-room rather than seede
 
 - `doc-3` §5 row 8 (`apps/docs/`) was removed. Row 4 (`pixi-sandbox init`) now names its owner.
 - REL-2 to REL-7 each gained a checkable proof criterion, so their milestones can close.
+- 2026-10-23: six tasks carried phantom milestone values `M0`, `M1` and `M2` (no such files exist)
+  instead of `m-0`, `m-1` and `m-2`, so `milestone list` showed five milestones twice over and
+  reported progress against the wrong set. REL-10 moved to `m-0`; REL-5, REL-8 and REL-9 to `m-1`;
+  REL-11 and REL-12 to `m-2`, through the CLI. Progress now matches this document.
 
 
 ## Intake of 2026-10-23 — GitHub issues #7–#10

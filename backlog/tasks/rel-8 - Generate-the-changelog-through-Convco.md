@@ -4,10 +4,10 @@ title: Generate the changelog through Convco
 status: To Do
 assignee: []
 created_date: '2026-10-20 19:12'
-updated_date: '2026-10-20 20:11'
+updated_date: '2026-10-23 15:20'
 labels:
   - release
-milestone: M1
+milestone: m-1
 dependencies:
   - REL-2
 priority: high

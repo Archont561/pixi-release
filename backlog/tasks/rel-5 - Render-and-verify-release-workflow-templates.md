@@ -4,12 +4,12 @@ title: Render and verify release workflow templates
 status: To Do
 assignee: []
 created_date: '2026-10-01 00:28'
-updated_date: '2026-10-20 20:11'
+updated_date: '2026-10-23 15:20'
 labels:
   - release
   - ci
   - testing
-milestone: M1
+milestone: m-1
 dependencies:
   - REL-3
   - REL-9

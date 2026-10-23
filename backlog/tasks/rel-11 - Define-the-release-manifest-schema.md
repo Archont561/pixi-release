@@ -4,10 +4,10 @@ title: Define the release manifest schema
 status: To Do
 assignee: []
 created_date: '2026-10-20 19:12'
-updated_date: '2026-10-20 20:11'
+updated_date: '2026-10-23 15:20'
 labels:
   - architecture
-milestone: M2
+milestone: m-2
 dependencies:
   - REL-4
 priority: medium

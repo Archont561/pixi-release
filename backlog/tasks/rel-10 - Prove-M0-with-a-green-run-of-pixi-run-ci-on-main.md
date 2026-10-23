@@ -4,9 +4,10 @@ title: Prove M0 with a green run of pixi run ci on main
 status: To Do
 assignee: []
 created_date: '2026-10-20 19:12'
+updated_date: '2026-10-23 15:20'
 labels:
   - ci
-milestone: M0
+milestone: m-0
 dependencies:
   - REL-1
 priority: high

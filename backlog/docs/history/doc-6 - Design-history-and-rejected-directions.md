@@ -61,6 +61,11 @@ These were considered and dropped before they reached a decision, so no decision
 - **Dropping Turbo to match `pixi-sandbox`.** Rejected in `decision-1`, recorded here only because
   the opposite choice is the one a reader will expect.
 
+Recorded by a decision rather than here: **generated governance files** (`REL-18`). `decision-12`
+rejects issue forms, an issue `config.yml` and a PR template, and admits the PR-title check only as
+one hand-written `convco check --from-stdin` line in the consumer's own `ci.yml`. Reopen that
+decision only if a consumer adopts squash merging, which would make the title release input.
+
 ## Index of determinations
 
 Titles and ids only. Follow the link for the rule; nothing is summarised here, because a summary is

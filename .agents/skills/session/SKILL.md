@@ -53,9 +53,28 @@ part of closing the sprint (§5.5), not a favour for a later session.
    - If `pixi` exists: `pixi run setup` (Bun install and Lefthook hooks), then `pixi run gates`
      as the baseline.
    - If `pixi`, `bun`, or `cargo` is missing, that is the fresh-sandbox state, not a dead end:
-     restore the environment with the recipe in `backlog/docs/research/agent-environment/doc-7`
-     (clone the `sandbox/*` branch, `restore` into a scratch directory outside the repository, then
-     `pixi install --frozen --offline`, `pixi run setup`, `pixi run gates`). Do this before
+     **run the repository's own restore script.** `scripts/restore.sh` is the generated
+     `pixi-sandbox` entry point (pixi-sandbox 0.8.0), and it resolves the branch, fetches it,
+     unpacks the packed environment, verifies every file against the manifest and wires the
+     vendored Cargo registry, so the gates afterwards need no network:
+
+     ```bash
+     # Restore into a scratch clone, never into the workspace: the unpacked environment is
+     # ~1.7 GiB and the vendor tree another ~270 MiB, which would swamp the session snapshot.
+     git clone --depth 1 -b <session-branch> https://github.com/Archont561/pixi-release.git /tmp/work
+     cd /tmp/work && sh scripts/restore.sh            # ~1 min, ends with "restore complete"
+     export PATH="$HOME/.local/bin:$PATH"             # pixi and pixi-sandbox land here
+     pixi install --frozen --offline                  # must be a no-op
+     pixi run --frozen gates                          # the baseline, offline
+     ```
+
+     `PIXI_SANDBOX_USER_TOOLS=skip` leaves `HOME` and the shell profile untouched (CI, shared
+     accounts); `PIXI_SANDBOX_BRANCH` overrides the branch it resolves from `pixi-sandbox.toml`.
+     The script is generated — regenerate it through `pixi-sandbox upgrade`, never edit it, and
+     keep its `# pixi-sandbox-version:` stamp as it came.
+
+     When the script cannot run (no GitHub reachability to fetch `sandbox/*`), fall back to the
+     manual recipe in `backlog/docs/research/agent-environment/doc-7`. Either way, do this before
      planning, so the gates you promise are the gates that will actually run.
    - Backlog stays usable throughout through `npx -y backlog.md@1.53.0 …`, the exact version
      pinned in `package.json`. Only when a restore is impossible, treat CI as the authority:

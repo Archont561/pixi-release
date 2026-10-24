@@ -4,7 +4,7 @@ title: Decide per-package release scoping and milestone-driven dispatch
 status: To Do
 assignee: []
 created_date: '2026-10-23 15:01'
-updated_date: '2026-10-24 15:58'
+updated_date: '2026-10-24 18:12'
 labels:
   - release
   - architecture
@@ -13,6 +13,13 @@ dependencies:
   - REL-3
 references:
   - 'https://github.com/Archont561/pixi-release/issues/8'
+documentation:
+  - >-
+    backlog/decisions/decision-17 -
+    One-version-per-artifact-pinned-by-a-release-group.md
+  - >-
+    backlog/docs/plan/doc-11 -
+    Development-plan-version-truth-evidence-then-surface.md
 priority: low
 type: spike
 ordinal: 16000

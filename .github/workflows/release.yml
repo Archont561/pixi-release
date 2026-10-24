@@ -238,16 +238,21 @@ jobs:
 
       # The bytes published here are the bytes the registry received: same artifact job, same
       # checksums, so a consumer can verify one against the other.
+      #
+      # `--repo` is not decoration: this job has no checkout — it only downloads artifacts — so
+      # `gh` has no `.git` to discover the repository from and refuses with "fatal: not a git
+      # repository" (REL-27, run 40115209793).
       - name: Publish the GitHub Release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.build.outputs.tag_name }}
           PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
           shopt -s nullglob
           assets=(output/linux-64/*.conda SHA256SUMS)
-          flags=(--title "${TAG}" --notes-file release-notes.md --verify-tag)
+          flags=(--repo "${REPOSITORY}" --title "${TAG}" --notes-file release-notes.md --verify-tag)
           [ "${PRERELEASE}" = "true" ] && flags+=(--prerelease)
           gh release create "${TAG}" "${assets[@]}" "${flags[@]}"

@@ -55,9 +55,11 @@ workflow-check = { cmd = "cargo run --manifest-path Cargo.toml -p pixi-release -
 repo-check = { cmd = "cargo run --manifest-path Cargo.toml -p xtask -- check", description = "Owner-lane repository checks" }
 backlog = { cmd = "bun x backlog", depends-on = ["bun-install"], description = "Manage Backlog.md through its CLI" }
 
-# Builds the conda artifact described by `recipe/recipe.yaml`. `convco` is a *run* dependency of
-# that recipe (decision-6), so the artifact installs with the tool the controller executes.
-package = { cmd = "pixi exec -c conda-forge --spec 'rattler-build>=0.77,<0.78' rattler-build build --recipe recipe/recipe.yaml --output-dir output -c conda-forge", description = "Build the pixi-release conda artifact into output/" }
+# Builds the conda artifact described by `crates/pixi-release/recipe/recipe.yaml` — the recipe lives
+# inside the crate it packages, so the artifact's definition ships with the code it describes.
+# `convco` is a *run* dependency of that recipe (decision-6), so the artifact installs with the tool
+# the controller executes.
+package = { cmd = "pixi exec -c conda-forge --spec 'rattler-build>=0.77,<0.78' rattler-build build --recipe crates/pixi-release/recipe/recipe.yaml --output-dir output -c conda-forge", description = "Build the pixi-release conda artifact into output/" }
 
 # Registry delivery for the release lane (decision-14). prefix.dev trusted publishing exchanges
 # the workflow's GitHub OIDC token for a channel-scoped credential, so no token is stored here.

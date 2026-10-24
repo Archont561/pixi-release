@@ -119,7 +119,7 @@ jobs:
           if old == new:
               print(f"manifests already at {new}")
               raise SystemExit(0)
-          for name in ("Cargo.toml", "pixi.toml", "package.json", "recipe/recipe.yaml"):
+          for name in ("Cargo.toml", "pixi.toml", "package.json", "crates/pixi-release/recipe/recipe.yaml"):
               path = Path(name)
               path.write_text(path.read_text().replace(old, new))
           print(f"stamped {old} -> {new}")

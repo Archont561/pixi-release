@@ -48,7 +48,9 @@ Run `pixi run gates` before handing off a change. Scope Turbo work only by forwa
 
 ## Session workflow
 
-Start and end every work session with `.agents/skills/session/SKILL.md`. It sequences environment bring-up, backlog survey, proposal, work, merge, and hand-off.
+Start and end every work session with `.agents/skills/session/SKILL.md`. It sequences environment bring-up, backlog survey, the sprint proposal, work, merge, and hand-off.
+
+A session is **sprint-long** by default: one milestone slice of Backlog tasks, scoped by the plan in `backlog/docs/plan/`, ending in merged pull requests, a milestone check, and one release decision. Shorten a session to a single task only when the user asks for that, or when external waits dominate (many workflow runs, a relock round-trip, a release probe); say the reason and confirm first.
 
 ## Merge policy
 

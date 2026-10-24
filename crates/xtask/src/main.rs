@@ -76,6 +76,8 @@ fn required_files(root: &Path, findings: &mut Vec<String>) {
         "deny.toml",
         "crates/package.json",
         "CHANGELOG.md",
+        // The recipe moved into the crate it packages; a release without it has nothing to build.
+        "crates/pixi-release/recipe/recipe.yaml",
     ];
     for relative in REQUIRED {
         if !root.join(relative).exists() {
@@ -123,7 +125,7 @@ fn versions_agree(root: &Path, findings: &mut Vec<String>) {
 /// `decision-13`). The recipe is never generated — a packaging change must be reviewable on its
 /// own — so drift is caught here instead.
 fn packaging_agrees(root: &Path, findings: &mut Vec<String>) {
-    let relative = "recipe/recipe.yaml";
+    let relative = "crates/pixi-release/recipe/recipe.yaml";
     let Ok(recipe) = fs::read_to_string(root.join(relative)) else {
         findings.push(format!("missing packaging recipe: {relative}"));
         return;

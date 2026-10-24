@@ -76,3 +76,47 @@ jobs:
 
       - name: Build
         run: pixi run build
+
+  # Packaging had no proof until a release run, which is how the missing `c_stdlib` variant reached
+  # a real release instead of a pull request (REL-27: the `build` job was the first thing ever to
+  # render the recipe). The recipe now lives inside the crate it packages, so this job is also the
+  # only place a move of that file can be shown correct. It runs beside `gates`, not after it, so a
+  # pull request waits for the slower of the two rather than for their sum.
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    # A cold `rattler-build` solve plus a release Cargo build; the release lane does the same work
+    # in about a minute once the environment cache is warm.
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The same action pin as the gates job above: one workflow, one version of the tool that
+      # materialises the environment both jobs build in.
+      - name: Install Pixi environment
+        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
+        with:
+          environments: default
+          cache: true
+          locked: true
+
+      # One command surface (decision-1): the same `pixi run package` the release lane runs, so the
+      # proof and the artifact cannot describe different recipes.
+      - name: Build the conda artifact
+        run: pixi run --frozen package
+
+      # The filename is the packaging contract: `pixi-release-<version>-<build>.conda`. A recipe
+      # that renders but names the package wrong fails here rather than at install time.
+      - name: Assert the artifact names the package
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          artifacts=(output/linux-64/pixi-release-*.conda)
+          if [ ${#artifacts[@]} -eq 0 ]; then
+            echo "::error::no pixi-release conda artifact was produced"
+            find output -maxdepth 3 -type f || true
+            exit 1
+          fi
+          printf '%s\n' "${artifacts[@]}" | tee -a "$GITHUB_STEP_SUMMARY"

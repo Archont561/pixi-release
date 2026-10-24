@@ -118,7 +118,7 @@ The controller implements `plan → prepare → cut/tag → verify/build → pub
 
 ## Delivery mechanics
 
-The controller is delivered as a conda package built from `recipe/recipe.yaml`: `convco` is a run
+The controller is delivered as a conda package built from `crates/pixi-release/recipe/recipe.yaml`: `convco` is a run
 dependency there because the binary executes it and never links it (`decision-6`), so
 `pixi global install pixi-release` resolves the tool the controller spawns. The recipe is
 authored, never generated, and its version/name/pins are checked by `repo-check` against the

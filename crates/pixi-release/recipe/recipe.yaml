@@ -1,5 +1,8 @@
 # The `pixi-release` conda package: `pixi run package`.
 #
+# The recipe ships inside the crate it packages, so the artifact's definition lives with the code
+# it describes and the repository root stays a workspace rather than a packaging directory.
+#
 # `variants.yaml` beside this file supplies `c_stdlib`, which `${{ stdlib('c') }}` below requires;
 # without it the recipe does not render (REL-27, run 40109716135).
 #
@@ -18,8 +21,11 @@ package:
   name: pixi-release
   version: ${{ version }}
 
+# Relative paths are resolved against this file's directory, so three levels up is the repository
+# root. `about.license_file` below is resolved against the source directory first, which is why the
+# license names stay bare even though the recipe is no longer a sibling of them.
 source:
-  path: ..
+  path: ../../..
 
 build:
   number: 0

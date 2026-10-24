@@ -11,10 +11,11 @@ that understands one TOML shape and one JSON shape. Everything else it touches, 
 
 Three consequences are already measurable in this repository, before any new ecosystem is added:
 
-- A YAML line (`version: "0.1.0"`, as in `recipe/recipe.yaml`) is not `version =` or `"version":`, so
-  the scan skips it. Listing the recipe in `version.manifests` makes `prepare` refuse the manifest as
-  *carrying no version literal*, and no test lists it. The recipe's version is enforced instead by an
-  owner-lane check (`crates/xtask/src/main.rs::packaging_agrees`), outside the product.
+- A YAML line (`version: "0.1.0"`, as in `crates/pixi-release/recipe/recipe.yaml`) is not `version =`
+  or `"version":`, so the scan skips it. Listing the recipe in `version.manifests` makes `prepare`
+  refuse the manifest as *carrying no version literal*, and no test lists it. The recipe's version is
+  enforced instead by an owner-lane check (`crates/xtask/src/main.rs::packaging_agrees`), outside the
+  product.
 - `Version` derives `Ord` on its `String` payload, so `"0.10.0" < "0.9.0"`. Nothing compares versions
   today, so the defect is latent; the type still promises an ordering every future caller will trust.
 - The syntax check accepts strict semver only, and refuses versions the registries this product is

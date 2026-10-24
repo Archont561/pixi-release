@@ -97,7 +97,7 @@ second evidence anchor.
 | Version | ✅ `plan` derives it through Convco (`decision-6`); `plan --version` overrides it explicitly |
 | Merge | ✅ normal merge commit, `gh pr merge --merge` |
 | Tag | ✅ `autorelease.yml` writes the annotated `v*` tag (bootstrap, `decision-14` §3); `cut` takes it over in REL-7 |
-| Trigger | ✅ `autorelease.yml` listens to `main` pushes and to `milestone-v*` / `milestone/*` / `m-v*` tags (`decision-14` §4), and dispatches `release.yml` because a `GITHUB_TOKEN` push starts nothing (`doc-3` §2.3 rule 1) |
+| Trigger | ✅ a `milestone-v*` / `milestone/*` / `m-v*` tag or a dispatch *asks* for a release; a `main` push only reports the version it would get (`decision-14` §4, §9). The run dispatches `release.yml` because a `GITHUB_TOKEN` push starts nothing (`doc-3` §2.3 rule 1) |
 | Release workflow | ✅ `release.yml` builds the conda artifact from the tagged source and proves it before publishing |
 | Publish | ✅ channel `archont561/archont561` through the `prefix` OIDC binding; a GitHub Release carries the same bytes plus `SHA256SUMS` |
 
@@ -106,6 +106,9 @@ What is still missing, named rather than implied:
 - **Platform breadth.** One platform (`linux-64`) until a build matrix exists (`decision-14` §8).
 - **Self-release by a pinned controller.** REL-7 replaces the bootstrap tag step; until then the
   train tags with Convco and `git`, and the tag body is the changelog rather than `cut`'s trailers.
+- **A proven release run.** The train has executed once and stopped at the packaging step
+  (`REL-27`: the recipe had no `c_stdlib`); the artifact has not been built by CI yet, so the
+  publish link below is written, not demonstrated.
 - **Artifact verification and resumable publish** (REL-6) and the rendered consumer shapes
   (REL-5, REL-12). The owner-lane files are not their output (`doc-3` §2.1).
 

@@ -5,11 +5,12 @@ name: autorelease
 # and, when the answer is yes, proves it and pushes the annotated `v*` tag that `release.yml`
 # turns into artifacts.
 #
-# Triggers:
-#   * a landed push to `main` that touched something a release could change;
-#   * a milestone tag (`milestone-v*`, `milestone/*`, `m-v*`), which is a *checkpoint that asks
-#     for a release*, never a version and never an evidence anchor (decision-4, decision-14 §4);
-#   * a manual dispatch, which is how a version is forced or a dry run is taken.
+# Triggers, and the difference between them (decision-14 §4, §9):
+#   * a milestone tag (`milestone-v*`, `milestone/*`, `m-v*`) **asks for a release**. It is a
+#     checkpoint, never a version and never an evidence anchor (decision-4);
+#   * a manual dispatch asks for a release, and is how a version is forced or a dry run is taken;
+#   * a landed push to `main` **never asks for one**. It reports the version a release would get
+#     and stops. A merge spends no version space: versions are deliberate.
 #
 # The version comes from Convco and nowhere else (decision-6). This workflow never composes a
 # version string from a file, a date or a branch name.
@@ -136,9 +137,19 @@ jobs:
           dry_run=false
           [ "${INPUT_DRY_RUN}" = "true" ] && dry_run=true
 
+          # A push to a branch is not a request for a release (decision-14 §9). The version above
+          # is still computed, so the merge can say what the next dispatch would spend.
+          observe=false
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "${GITHUB_REF_TYPE}" = "branch" ]; then
+            observe=true
+          fi
+
           if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
             action=skip
             reason="${tag} already exists; a version is never re-released (decision-7)"
+          elif [ "${observe}" = "true" ]; then
+            action=observe
+            reason="a merge spends no version space; dispatch this workflow or push a milestone tag to release ${tag} (decision-14 §9)"
           else
             action=tag
             reason=""
@@ -156,8 +167,12 @@ jobs:
         if: steps.plan.outputs.action == 'skip'
         run: 'echo "autorelease: ${{ steps.plan.outputs.reason }}" >> "$GITHUB_STEP_SUMMARY"'
 
-      # Everything below only runs when a release is actually due, so an ordinary merge costs one
-      # cheap Convco call and nothing else.
+      - name: Report what the next release would be
+        if: steps.plan.outputs.action == 'observe'
+        run: 'echo "autorelease: ${{ steps.plan.outputs.reason }}" >> "$GITHUB_STEP_SUMMARY"'
+
+      # Everything below only runs when a release has been asked for, so an ordinary merge costs
+      # one cheap Convco call and nothing else — exactly like the version it does not spend.
       - name: Run the quality gates
         if: steps.plan.outputs.action == 'tag'
         run: pixi run --frozen gates

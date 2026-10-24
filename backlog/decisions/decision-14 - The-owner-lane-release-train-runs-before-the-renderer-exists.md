@@ -47,10 +47,22 @@ produce. This decision is about that order.
    recipe builds a compiled artifact, so a release publishes one platform. A multi-platform matrix
    is separate work, tracked as a gap rather than implied by these files.
 
+9. **A merge never spends a version.** `autorelease.yml` runs on three events and treats them
+   differently: a `main` push **observes** (it computes the version Convco would give and stops),
+   while a milestone tag or a `workflow_dispatch` **asks** (gates → packaging proof → notes → tag →
+   dispatch `release.yml`). The first version of this train tagged on any qualifying merge, which
+   made versions an accident of how often `main` moved and made the milestone tag redundant. The
+   cost is deliberate: the packaging proof runs in the release run rather than on every merge, so
+   `ci.yml` stays the answer to *is `main` healthy* and the release run is the answer to *does the
+   artifact build*. A dispatch off a branch is still a release request — the event, not the ref,
+   decides.
+
 ## Consequences
 
 - `REL-27` tracks the train. Its end-to-end proof is one dispatched run, because YAML that
-  actionlint accepts has not thereby ever executed.
+  actionlint accepts has not thereby ever executed. The first such run (40109716135) proved the
+  point by failing: a `main` push reached the packaging step and stopped there, so §9 exists
+  because that run should never have been cutting a tag at all.
 - `REL-7` inherits step 3's bootstrap and is expected to delete it.
 - The consumer-facing shapes REL-5 renders are *not* these files. When REL-5 lands, the two must be
   compared deliberately: a bootstrap that diverges from the rendered target is how a generator bug

@@ -4,7 +4,7 @@ title: Run the owner-lane release train
 status: In Progress
 assignee: []
 created_date: '2026-10-24 15:57'
-updated_date: '2026-10-24 16:19'
+updated_date: '2026-10-24 17:17'
 labels:
   - release
   - ci
@@ -23,9 +23,9 @@ Both halves of the release lane from decision-14: autorelease.yml decides and ta
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 autorelease derives the version from Convco, refuses to re-release an existing tag, runs the gates and a packaging check before tagging, and dispatches release.yml after pushing the tag.
+- [x] #1 autorelease derives the version from Convco, refuses to re-release an existing tag, runs the gates and a packaging check before tagging, and dispatches release.yml after pushing the tag.
 - [ ] #2 release stamps the tagged version into the manifests and the recipe, proves agreement with repo-check, and refuses to publish an artifact whose filename does not match the tag.
-- [ ] #3 Publishing to channel archont561/archont561 uses GitHub OIDC under the prefix environment with id-token: write and no stored token; a prerelease tag skips the upload.
+- [x] #3 Publishing to channel archont561/archont561 uses GitHub OIDC under the prefix environment with id-token: write and no stored token; a prerelease tag skips the upload.
 - [ ] #4 A GitHub Release carries the same artifact bytes plus SHA256SUMS.
 - [ ] #5 One dispatched run proves the lane end to end, because YAML actionlint accepts has not thereby executed.
 - [ ] #6 Proven by a green gates run on the merge commit that covers this task's tests.
@@ -46,4 +46,14 @@ Two corrections came out of that run, both in this task s PR:
 AC#2..#5 remain open: no dispatched run has completed yet, and the artifact has still never been built by CI. AC#6 is proven by the merge commit that lands this task.
 
 Observe path measured, 2026-10-24 — run 40110923823 (event push, main, 98f956f, the merge of #36). action=observe, version 0.1.0, no gates/package/notes steps ran, step summary: "autorelease: a merge spends no version space; dispatch this workflow or push a milestone tag to release v0.1.0 (decision-14 §9)", `git ls-remote --tags origin` still empty, run took 35 s.
+
+Measured, 2026-10-24 — the release was cut, and the lane ran end to end except its last job.
+
+**The trigger.** `gh workflow run` is still HTTP 403 for this sandbox token, so the release was asked for the documented way: an annotated `milestone/sprint-1` tag pushed at 4ea8dc9. Run 40115046817 (push, milestone tag) succeeded in 2m10s: plan derived 0.1.0 from Convco, the gates ran, `pixi run package` built the artifact, Convco wrote the notes, `git tag -a v0.1.0` was pushed to origin, and `gh workflow run release.yml --ref v0.1.0` dispatched the lane. `refs/tags/v0.1.0` = bc9dc71, annotated, body = the Convco changelog. No version was re-released and no existing tag was overwritten (AC#1).
+
+**The lane.** Run 40115209793: `build` succeeded in 50s (rattler-build loaded `recipe/variants.yaml`, resolved rust 1.98.1 / gcc_linux-64 16.2.0 / sysroot_linux-64 2.17, `xtask check: repository checks passed`, artifact `pixi-release-0.1.0-h41f06ac_0.conda`), and `publish to prefix.dev` succeeded in 31s — `pixi upload prefix --channel archont561/archont561 --generate-attestation --skip-existing`, with the OIDC guard step passing, so channel publication is proven with no stored token (AC#3).
+
+**The failure.** `github release` failed in 6s: `failed to run git: fatal: not a git repository (or any of the parent directories): .git`. That job has no checkout — it only downloads artifacts — so `gh release create` had no repository to resolve. Fixed by passing `--repo "${GITHUB_REPOSITORY}"`. AC#4 stays open until a GitHub Release exists with the artifact and SHA256SUMS, and AC#5 stays open until the lane completes in one run.
+
+**Still not exercised by this run:** the version stamp was a no-op (the manifests already said 0.1.0, which is what the tag says), and the filename-mismatch guard had no negative case. AC#2 stays open until a run stamps a version that differs from the manifests.
 <!-- SECTION:NOTES:END -->

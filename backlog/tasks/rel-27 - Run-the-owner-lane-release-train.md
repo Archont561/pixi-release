@@ -4,7 +4,7 @@ title: Run the owner-lane release train
 status: In Progress
 assignee: []
 created_date: '2026-10-24 15:57'
-updated_date: '2026-10-24 17:32'
+updated_date: '2026-10-24 17:50'
 labels:
   - release
   - ci
@@ -26,7 +26,7 @@ Both halves of the release lane from decision-14: autorelease.yml decides and ta
 - [x] #1 autorelease derives the version from Convco, refuses to re-release an existing tag, runs the gates and a packaging check before tagging, and dispatches release.yml after pushing the tag.
 - [ ] #2 release stamps the tagged version into the manifests and the recipe, proves agreement with repo-check, and refuses to publish an artifact whose filename does not match the tag.
 - [x] #3 Publishing to channel archont561/archont561 uses GitHub OIDC under the prefix environment with id-token: write and no stored token; a prerelease tag skips the upload.
-- [ ] #4 A GitHub Release carries the same artifact bytes plus SHA256SUMS.
+- [x] #4 A GitHub Release carries the same artifact bytes plus SHA256SUMS.
 - [ ] #5 One dispatched run proves the lane end to end, because YAML actionlint accepts has not thereby executed.
 - [ ] #6 Proven by a green gates run on the merge commit that covers this task's tests.
 - [x] #7 A push to main tags nothing: it reports the version a release would get and stops, so merges spend no version space (decision-14 §9).
@@ -64,4 +64,14 @@ Repair path, 2026-10-24 — the last job can now be finished without rebuilding.
 Why not just re-run: a re-run replays the workflow file from the run's own ref, so 40115209793 would re-read the broken job at v0.1.0. Why not a plain dispatch: that rebuilds, and a conda package is not byte-reproducible (timestamps), so tag v0.1.0 would carry two different binaries (decision-7).
 
 Verified locally against the environment the steps would see: the identity script yields tag_name/version/prerelease for normal, prerelease, repair and repair-prerelease, and exits 1 for a blank tag and for `milestone-sprint-1`; the fetch guard accepts `pixi-release-0.1.0-h41f06ac_0.conda` and rejects `pixi-release-0.0.9-…` when VERSION is 0.1.0. Not yet exercised by a real run — `gh workflow run` is 403 for this token, so the first repair run is the owner's to start.
+
+Release repaired, 2026-10-24 — `v0.1.0` now has a GitHub Release, and it did not cost a second build.
+
+Run 40117871020 (`release`, `workflow_dispatch`, `main`, `tag=v0.1.0`, `existing_run_id=40115209793`): `build` skipped, `publish to prefix.dev` skipped, `github release` success in 8s. https://github.com/Archont561/pixi-release/releases/tag/v0.1.0 — draft=false, prerelease=false, body is the Convco changelog carried by the tag annotation, assets `pixi-release-0.1.0-h41f06ac_0.conda` (692158 bytes) and `SHA256SUMS` (118 bytes).
+
+Byte identity is the run's own chain, not an assumption: both files came from 40115209793's `conda-dist` and `release-meta` artifacts — the run whose `publish to prefix.dev` job uploaded to the channel — the filename guard matched `pixi-release-0.1.0`, and `sha256sum --check SHA256SUMS` passed before `gh release create`. Tags are unchanged (`v0.1.0` → bc9dc71 → 4ea8dc9), so nothing was re-cut.
+
+AC#4 is checked on that evidence. AC#5 stays open: this run exercised the last job, not the lane end to end. AC#2 stays open: no run has yet stamped a version that differs from the manifests.
+
+Side evidence, same day: a `workflow_dispatch` of `autorelease` naming the existing version (40117631616) finished in 38s having pushed nothing — the `skip` branch, "a version is never re-released (decision-7)" — which is the first observation of that guard on the dispatch path.
 <!-- SECTION:NOTES:END -->

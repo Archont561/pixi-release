@@ -1,0 +1,210 @@
+# Owner lane — not rendered. See doc-3 §2.1, §2.2.
+name: autorelease
+
+# The release train's decision half (decision-14). It answers one question — is a release due? —
+# and, when the answer is yes, proves it and pushes the annotated `v*` tag that `release.yml`
+# turns into artifacts.
+#
+# Triggers:
+#   * a landed push to `main` that touched something a release could change;
+#   * a milestone tag (`milestone-v*`, `milestone/*`, `m-v*`), which is a *checkpoint that asks
+#     for a release*, never a version and never an evidence anchor (decision-4, decision-14 §4);
+#   * a manual dispatch, which is how a version is forced or a dry run is taken.
+#
+# The version comes from Convco and nowhere else (decision-6). This workflow never composes a
+# version string from a file, a date or a branch name.
+#
+# Bootstrap boundary, named so it can be deleted: this file cuts the tag with Convco and `git`
+# rather than with `pixi release cut`, because AGENTS.md forbids controlling a release with the
+# unreleased checkout, and this repository has no `.pixi-release.toml` yet. REL-7 replaces the tag
+# step with a pinned, verified prior `pixi-release`, and decision-14 §3 is the deletion trigger.
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "milestone-v*"
+      - "milestone/*"
+      - "m-v*"
+    # Markdown and research cannot change an artifact, so they do not ask for a release. Path
+    # filters are not evaluated for tag pushes, which is what we want: a milestone tag always asks.
+    paths-ignore:
+      - "backlog/**"
+      - ".agents/**"
+      - "docs/**"
+      - "*.md"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: >-
+          Explicit version to release (for example 0.2.0). Leave blank to let Convco compute it
+          from conventional commits (decision-6).
+        required: false
+        default: ""
+        type: string
+      bump:
+        description: >-
+          Force the Convco bump instead of letting the commit types decide: major, minor or
+          patch. Leave blank for auto.
+        required: false
+        default: ""
+        type: string
+      suffix:
+        description: >-
+          Prerelease suffix (for example rc.1). A suffixed tag dry-runs the registry instead of
+          publishing, so version space is only spent by a clean release.
+        required: false
+        default: ""
+        type: string
+      dry-run:
+        description: Decide and prove, but push no tag.
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  # `gh workflow run` after the tag push needs Actions write; without it the release lane is
+  # never dispatched and the tag sits there unbuilt.
+  actions: write
+
+# Release decisions race on the same history, so runs queue instead of cancelling: a cancelled
+# tag push could split the train in two.
+concurrency:
+  group: autorelease-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan-and-tag:
+    name: plan and tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Convco reads every conventional commit since the last tag, so the whole history and
+          # every tag must be present.
+          fetch-depth: 0
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
+        with:
+          pixi-version: v0.83.0
+          environments: default
+          cache: true
+          locked: true
+
+      - name: Plan the next release
+        id: plan
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_BUMP: ${{ inputs.bump }}
+          INPUT_SUFFIX: ${{ inputs.suffix }}
+          INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+
+          version="${INPUT_VERSION}"
+          if [ -z "$version" ]; then
+            bump_flag=""
+            case "${INPUT_BUMP}" in
+              "") ;;
+              major) bump_flag="--major" ;;
+              minor) bump_flag="--minor" ;;
+              patch) bump_flag="--patch" ;;
+              *) echo "::error::unknown bump '${INPUT_BUMP}'; expected major, minor or patch"; exit 2 ;;
+            esac
+            # Convco is the only version authority (decision-6).
+            version="$(pixi run --frozen -- convco version --bump ${bump_flag})"
+          fi
+          if [ -z "$version" ]; then
+            echo "::error::Convco produced no version; nothing to release"
+            exit 1
+          fi
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'${version}' is not a plain semantic version"
+            exit 1
+          fi
+
+          tag="v${version}"
+          if [ -n "${INPUT_SUFFIX}" ]; then
+            tag="${tag}-${INPUT_SUFFIX}"
+          fi
+
+          dry_run=false
+          [ "${INPUT_DRY_RUN}" = "true" ] && dry_run=true
+
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            action=skip
+            reason="${tag} already exists; a version is never re-released (decision-7)"
+          else
+            action=tag
+            reason=""
+          fi
+
+          {
+            echo "version=${version}"
+            echo "tag=${tag}"
+            echo "action=${action}"
+            echo "reason=${reason}"
+            echo "dry_run=${dry_run}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Report a skipped release
+        if: steps.plan.outputs.action == 'skip'
+        run: 'echo "autorelease: ${{ steps.plan.outputs.reason }}" >> "$GITHUB_STEP_SUMMARY"'
+
+      # Everything below only runs when a release is actually due, so an ordinary merge costs one
+      # cheap Convco call and nothing else.
+      - name: Run the quality gates
+        if: steps.plan.outputs.action == 'tag'
+        run: pixi run --frozen gates
+
+      - name: Prove the artifact still builds
+        if: steps.plan.outputs.action == 'tag'
+        run: pixi run --frozen package
+
+      - name: Write the release notes
+        if: steps.plan.outputs.action == 'tag'
+        shell: bash
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Convco writes the notes; this workflow authors none of its own text (decision-6).
+          pixi run --frozen -- convco changelog --unreleased "${VERSION}" > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::Convco produced no changelog for ${VERSION}"
+            exit 1
+          fi
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push the annotated release tag
+        if: steps.plan.outputs.action == 'tag' && steps.plan.outputs.dry_run != 'true'
+        shell: bash
+        env:
+          TAG: ${{ steps.plan.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" -F release-notes.md
+          git push origin "refs/tags/${TAG}"
+
+      # A tag pushed with GITHUB_TOKEN starts no workflow (doc-3 §2.3 rule 1), so the release lane
+      # is dispatched explicitly. Removing this step silently stops every release.
+      - name: Dispatch the release lane for the new tag
+        if: steps.plan.outputs.action == 'tag' && steps.plan.outputs.dry_run != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.plan.outputs.tag }}
+        run: gh workflow run release.yml --ref "${TAG}" -f tag="${TAG}"
+
+      - name: Report the dry run
+        if: steps.plan.outputs.action == 'tag' && steps.plan.outputs.dry_run == 'true'
+        run: >-
+          echo "autorelease dry-run: would push ${{ steps.plan.outputs.tag }} and dispatch
+          release.yml" >> "$GITHUB_STEP_SUMMARY"

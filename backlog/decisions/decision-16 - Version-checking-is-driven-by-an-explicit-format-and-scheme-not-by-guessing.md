@@ -2,7 +2,8 @@
 id: decision-16
 title: 'Version checking is driven by an explicit format and scheme, not by guessing'
 date: '2026-10-24 18:10'
-status: proposed
+updated: '2026-10-24 18:55'
+status: accepted
 ---
 ## Context
 
@@ -41,6 +42,28 @@ The tag stays the canonical serialisation of a release (`decision-4`); a scheme 
 into its manifest's dialect and parses it back for comparison. Comparison is by parsed components per
 scheme, never by the raw string, and `Version` stops deriving an ordering it does not honour.
 
+**Detection fills the three facts in, and never guesses a file's contents.** A policy entry may name
+only a path; the tool then resolves `format`, `key` and `scheme` from a **closed table** of manifests
+whose conventions are not in dispute — `Cargo.toml` (`[workspace.package] version`, falling back to
+`[package] version`), `package.json`, `pyproject.toml` (`[project] version`, PEP 440), `pom.xml`
+(`project/version` only — never `parent/version`, never a dependency's), `*.csproj` and
+`Directory.Build.props` (`Project/PropertyGroup/Version`, NuGet), `go.mod` (no literal: the tag is the
+source, checked against the module path's major), a conda `recipe.yaml` (`context.version`), and a
+whole-file `VERSION`. A file the table does not recognise is **refused**, naming the entry it needs;
+it is never read by looking for a version-shaped line. Detection is a table, not a heuristic, and the
+resolved facts are written into the plan's evidence as `detected` or `declared`, so a later run can
+tell which it was.
+
+**One environment source, and it may only agree.** A policy entry may name an environment variable
+instead of a path (`env = "…"`). It participates in agreement: the variable is read like a manifest,
+never consulted when Convco derives the next version (`decision-6`), and a plan that saw one records
+its name in evidence. Where a run needs to *override* the version rather than agree with it, the
+mechanism is the explicit authority the CLI already models (`plan --version`), which records the
+request; a variable is not a second, invisible way to make that request. The variable's name comes
+from the policy and there is no built-in default: naming it in code would claim a namespace in every
+consumer's CI and would contradict `decision-15` §3's claim that this tool exposes no
+`PIXI_RELEASE_*` surface.
+
 ## Consequences
 
 - Schema 2 replaces `version.manifests` (a list of paths) with `[[version.manifest]]` entries. REL-11
@@ -49,7 +72,14 @@ scheme, never by the raw string, and `Version` stops deriving an ordering it doe
   two are in use, YAML is the recipe this repository already ships, and `go-tag` is the first format
   where the correct answer is "there is no literal".
 - `xml` (Maven, NuGet) is admitted when a consumer needs it, with its own fixture — a structural XML
-  reader, never a line scan.
+  reader, never a line scan. Until then the table refuses a `pom.xml` it cannot read rather than
+  accepting a declaration that would parse it as text.
+- Detection is what lets a policy name a bare path (REL-34): `REL-28` builds the checker over the same
+  table, so there is one reader and not two. A file may always be declared explicitly; detection and
+  declaration must produce identical evidence when they agree, and a test asserts it.
+- The environment source is read-only evidence. A run that wants a version other than the derived one
+  uses the explicit authority, so `decision-6`'s single authority is untouched and an override remains
+  visible in the plan.
 - Owner-lane checks that duplicate the checker (`xtask::versions_agree`, `xtask::packaging_agrees`)
   are deleted once the checker is callable from the product; keeping both is the second copy this
   decision exists to prevent.

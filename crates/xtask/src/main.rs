@@ -69,7 +69,10 @@ fn tag_version(tag: &str) -> Result<&str, String> {
     let numeric = |part: &str| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit());
     let core_is_semver = core.split('.').count() == 3 && core.split('.').all(&numeric);
     let suffix_is_sane = suffix.is_none_or(|suffix| {
-        !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_alphanumeric() || c == '.')
+        !suffix.is_empty()
+            && suffix
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '.')
     });
     if !core_is_semver || !suffix_is_sane {
         return Err(format!("`{tag}` is not a release tag\n{USAGE}"));
@@ -109,7 +112,9 @@ fn run_checks(root: &Path, tag: Option<&str>) -> i32 {
     if findings.is_empty() {
         println!(
             "xtask check: repository checks passed{}",
-            tag.map_or_else(String::new, |tag| format!(" (tag {tag} describes the tree)"))
+            tag.map_or_else(String::new, |tag| format!(
+                " (tag {tag} describes the tree)"
+            ))
         );
         return 0;
     }
@@ -552,9 +557,10 @@ mod tests {
 
         assert_eq!(
             findings.len(),
-            versions.len() + usize::from(
-                fs::read_to_string(root.join("crates/pixi-release/recipe/recipe.yaml")).is_ok()
-            ),
+            versions.len()
+                + usize::from(
+                    fs::read_to_string(root.join("crates/pixi-release/recipe/recipe.yaml")).is_ok()
+                ),
             "every literal is reported once: {findings:#?}"
         );
         for (relative, carried) in &versions {
@@ -588,7 +594,12 @@ mod tests {
 
     #[test]
     fn the_check_grammar_takes_an_optional_tag() {
-        let args = |items: &[&str]| items.iter().map(|item| (*item).to_owned()).collect::<Vec<_>>();
+        let args = |items: &[&str]| {
+            items
+                .iter()
+                .map(|item| (*item).to_owned())
+                .collect::<Vec<_>>()
+        };
         assert_eq!(invocation(&args(&["check"])), Ok(None));
         assert_eq!(
             invocation(&args(&["check", "--tag", "v0.1.0"])),

@@ -367,7 +367,7 @@ tag-format     = "v{version}"
 
 [version]
 manifests = ["Cargo.toml"]
-lockfiles = ["Cargo.lock"]
+lockfiles = []
 changelog = "CHANGELOG.md"
 
 [[target]]
@@ -380,15 +380,81 @@ fn release_repo() -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::tempdir().expect("temp dir");
     let scratch = tempfile::tempdir().expect("scratch dir");
     std::fs::write(dir.path().join(".pixi-release.toml"), UNGATED_POLICY).expect("policy");
+    // The declared version and a member pinned at it: the two stages a prepare has to keep in step.
     std::fs::write(
         dir.path().join("Cargo.toml"),
-        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n\n\
+         [workspace.dependencies]\ndemo-core = { path = \"crates/core\", version = \"0.1.0\" }\n",
     )
     .expect("manifest");
     std::fs::write(dir.path().join("Cargo.lock"), "# lock\n").expect("lockfile");
     std::fs::write(dir.path().join("CHANGELOG.md"), "# Changelog\n").expect("changelog");
     init_repo(dir.path());
     (scratch, dir.keep())
+}
+
+/// A dependency-free Cargo workspace: a declared version, a member pinned at it, and no lockfile
+/// yet — the shape that makes the pin and lockfile stages provable rather than assumed. The policy
+/// is the ungated one with the lockfile declared, so a prepare has to refresh it.
+fn workspace_repo() -> (tempfile::TempDir, PathBuf) {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let scratch = tempfile::tempdir().expect("scratch dir");
+    let policy = UNGATED_POLICY.replace("lockfiles = []", "lockfiles = [\"Cargo.lock\"]");
+    std::fs::write(dir.path().join(".pixi-release.toml"), policy).expect("policy");
+    std::fs::write(
+        dir.path().join("Cargo.toml"),
+        "[workspace]\nmembers = [\"crates/core\"]\nresolver = \"2\"\n\n\
+         [workspace.package]\nversion = \"0.1.0\"\nedition = \"2021\"\n\n\
+         [workspace.dependencies]\ndemo-core = { path = \"crates/core\", version = \"0.1.0\" }\n",
+    )
+    .expect("manifest");
+    std::fs::create_dir_all(dir.path().join("crates/core/src")).expect("member directory");
+    std::fs::write(
+        dir.path().join("crates/core/Cargo.toml"),
+        "[package]\nname = \"demo-core\"\nversion.workspace = true\nedition.workspace = true\n",
+    )
+    .expect("member manifest");
+    std::fs::write(dir.path().join("crates/core/src/lib.rs"), "").expect("member source");
+    std::fs::write(dir.path().join("CHANGELOG.md"), "# Changelog\n").expect("changelog");
+    init_repo(dir.path());
+    (scratch, dir.keep())
+}
+
+/// A digest over every file the worktree holds, `.git` excluded: what "byte-identical" means when a
+/// test has to prove a dry run wrote nothing at all.
+fn tree_digest(root: &Path) -> String {
+    fn walk(dir: &Path, files: &mut Vec<PathBuf>) {
+        for entry in std::fs::read_dir(dir).expect("readable directory") {
+            let entry = entry.expect("readable entry");
+            let path = entry.path();
+            if entry.file_name() == ".git" {
+                continue;
+            }
+            if entry.file_type().expect("file type").is_dir() {
+                walk(&path, files);
+            } else {
+                files.push(path);
+            }
+        }
+    }
+    let mut files = Vec::new();
+    walk(root, &mut files);
+    files.sort();
+    let mut digest: u64 = 0xcbf2_9ce4_8422_2325;
+    for path in files {
+        for byte in path
+            .strip_prefix(root)
+            .expect("inside root")
+            .as_os_str()
+            .as_encoded_bytes()
+        {
+            digest = (digest ^ u64::from(*byte)).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        for byte in std::fs::read(&path).expect("readable file") {
+            digest = (digest ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    }
+    format!("{digest:016x}")
 }
 
 /// Writes a plan for the prepared repository, returning the path.
@@ -421,6 +487,7 @@ fn prepare_dry_run_reports_edits_without_touching_the_worktree(cli_bin: &str) {
     write_plan(cli_bin, &repo, &plan);
     let before = std::fs::read_to_string(repo.join("Cargo.toml")).expect("manifest");
     let status_before = git(&repo, &["status", "--porcelain"]);
+    let digest_before = tree_digest(&repo);
 
     let output = Command::new(cli_bin)
         .args([
@@ -456,6 +523,11 @@ fn prepare_dry_run_reports_edits_without_touching_the_worktree(cli_bin: &str) {
         "the manifest was not rewritten"
     );
     assert_eq!(git(&repo, &["status", "--porcelain"]), status_before);
+    assert_eq!(
+        tree_digest(&repo),
+        digest_before,
+        "a dry run must leave the tree byte-identical"
+    );
     let recorded_text = std::fs::read_to_string(&recorded).expect("recorded plan");
     assert!(recorded_text.contains("\"touched\""), "{recorded_text}");
 }
@@ -496,6 +568,137 @@ fn prepare_stages_the_changelog_convco_generates(cli_bin: &str) {
             .expect("manifest")
             .contains("version = \"0.2.0\""),
         "the planned literal must be staged"
+    );
+}
+
+/// AC#1, AC#2: the pin stage moves the literal beside the path, and the lockfile stage runs after
+/// the manifests agree, so Cargo's own record of the workspace carries the version just cut.
+#[rstest]
+fn prepare_moves_the_pins_and_then_the_lockfile(cli_bin: &str) {
+    let (scratch, repo) = workspace_repo();
+    let plan = scratch.path().join("plan.json");
+    let recorded = scratch.path().join("prepared.json");
+    write_plan(cli_bin, &repo, &plan);
+
+    let output = Command::new(cli_bin)
+        .args([
+            "prepare",
+            "--plan",
+            plan.to_str().expect("utf-8 path"),
+            "--out",
+            recorded.to_str().expect("utf-8 path"),
+        ])
+        .current_dir(&repo)
+        .output()
+        .expect("binary should run");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let manifest = std::fs::read_to_string(repo.join("Cargo.toml")).expect("manifest");
+    assert!(
+        manifest.contains("version = \"0.2.0\""),
+        "the declared version did not move:\n{manifest}"
+    );
+    assert!(
+        manifest.contains(r#"demo-core = { path = "crates/core", version = "0.2.0" }"#),
+        "the internal pin stayed behind:\n{manifest}"
+    );
+
+    let lock = std::fs::read_to_string(repo.join("Cargo.lock"))
+        .expect("the lockfile stage must write the lockfile");
+    assert!(
+        lock.contains("name = \"demo-core\"") && lock.contains("version = \"0.2.0\""),
+        "the lock does not record the stamped version:\n{lock}"
+    );
+
+    // The tree a --locked build reads is the tree the tag will name.
+    let locked = Command::new("cargo")
+        .args(["build", "--locked", "--offline", "--quiet"])
+        .current_dir(&repo)
+        .output()
+        .expect("cargo should run");
+    assert!(
+        locked.status.success(),
+        "cargo --locked rejected the prepared tree: {}",
+        String::from_utf8_lossy(&locked.stderr)
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let order = [
+        "prepare: updated Cargo.toml",
+        "pin 0.1.0 -> 0.2.0",
+        "refreshed Cargo.lock",
+        "staged CHANGELOG.md",
+    ];
+    let mut cursor = 0;
+    for needle in order {
+        let found = stdout[cursor..]
+            .find(needle)
+            .unwrap_or_else(|| panic!("`{needle}` missing or out of stage order in:\n{stdout}"));
+        cursor += found;
+    }
+
+    let recorded_text = std::fs::read_to_string(&recorded).expect("recorded plan");
+    for path in ["Cargo.toml", "Cargo.lock", "CHANGELOG.md"] {
+        assert!(
+            recorded_text.contains(&format!("\"{path}\"")),
+            "{path} belongs to the touched set: {recorded_text}"
+        );
+    }
+}
+
+/// DoD#1: a declared lockfile this release cannot refresh is named in the output and kept out of
+/// the touched set, rather than silently reported as refreshed (`REL-29`).
+#[rstest]
+fn prepare_names_a_lockfile_it_cannot_refresh(cli_bin: &str) {
+    let (scratch, repo) = workspace_repo();
+    let policy = UNGATED_POLICY.replace(
+        "lockfiles = []",
+        "lockfiles = [\"Cargo.lock\", \"bun.lock\"]",
+    );
+    std::fs::write(repo.join(".pixi-release.toml"), policy).expect("policy");
+    git(&repo, &["add", "--all"]);
+    git(
+        &repo,
+        &["commit", "--quiet", "--message", "chore: declare bun"],
+    );
+    let plan = scratch.path().join("plan.json");
+    let recorded = scratch.path().join("prepared.json");
+    write_plan(cli_bin, &repo, &plan);
+
+    let output = Command::new(cli_bin)
+        .args([
+            "prepare",
+            "--plan",
+            plan.to_str().expect("utf-8 path"),
+            "--out",
+            recorded.to_str().expect("utf-8 path"),
+        ])
+        .current_dir(&repo)
+        .output()
+        .expect("binary should run");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("not refreshing bun.lock"),
+        "the lockfile stage must name what it does not refresh: {stdout}"
+    );
+    assert!(
+        stdout.contains("REL-29"),
+        "the notice names the gap that owns it: {stdout}"
+    );
+    let recorded_text = std::fs::read_to_string(&recorded).expect("recorded plan");
+    assert!(
+        !recorded_text.contains("bun.lock"),
+        "an unrefreshed lockfile must not be claimed as touched: {recorded_text}"
     );
 }
 

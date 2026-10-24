@@ -14,7 +14,9 @@ use clap::{Parser, Subcommand, ValueEnum};
 use pixi_release_core::config::{ReleasePolicy, VersionSource};
 use pixi_release_core::cut::{self, check_repository};
 use pixi_release_core::plan::{Bump, Plan, PlanInputs, SourceRevision, Version, VersionAuthority};
-use pixi_release_core::prepare::{changelog_target, stage, version_edits};
+use pixi_release_core::prepare::{
+    Edit, Stage, changelog_target, pin_edits, stage, stages, version_edits,
+};
 use pixi_release_git::LocalGit;
 use pixi_release_git::{FakeGit, GitProtocol};
 
@@ -263,12 +265,12 @@ fn emit(plan: &Plan, out: Option<&str>) -> Result<(), String> {
     Ok(())
 }
 
-/// `prepare` writes the plan into the worktree — the version literals it names, and the changelog
-/// Convco generates for that version — and `--dry-run` reports the same work without touching a
-/// tracked file (REL-8).
+/// `prepare` writes the plan into the worktree — the version literals it names, the pins that
+/// quote them, the lockfiles Cargo regenerates, and the changelog Convco generates — and
+/// `--dry-run` reports the same work without touching a tracked file (REL-8, REL-29).
 ///
-/// Convco is asked for the changelog before anything is written, so a refusal leaves the worktree
-/// exactly as it was. The staged changelog is Convco's own bytes: this command writes no
+/// Every refusal is raised before the first byte is written, so a refused prepare leaves the
+/// worktree exactly as it was. The staged changelog is Convco's own bytes: this command writes no
 /// release-note text of its own (`decision-6`).
 fn run_prepare(options: &PrepareOptions) -> Result<(), String> {
     let policy = policy::load(&options.policy_path, policy::context())?;
@@ -284,63 +286,228 @@ fn run_prepare(options: &PrepareOptions) -> Result<(), String> {
     }
     let edits = version_edits(manifests.clone(), plan.version())
         .map_err(|refusal| format!("prepare: {refusal}"))?;
-
+    // Computed against the text as read: the pin stage keeps line numbers, so it lands on the
+    // already-stamped document without a second read.
+    let pins = pin_edits(manifests.clone(), plan.version())
+        .map_err(|refusal| format!("prepare: {refusal}"))?;
+    let (lockfiles, unrefreshed) = lockfile_stages(&policy, &edits[..], &pins[..]);
     let body = policy::convco_changelog(plan.version().as_str())?;
 
-    let mut touched: Vec<String> = edits.iter().map(|edit| edit.path().to_owned()).collect();
-    touched.extend(policy.lockfiles().iter().cloned());
-    touched.push(changelog.clone());
-
-    for edit in &edits {
-        println!(
-            "prepare: {} {}: {} -> {}",
-            if options.dry_run {
-                "would update"
-            } else {
-                "updated"
-            },
-            edit.path(),
-            edit.from(),
-            edit.to()
-        );
-    }
-
-    if options.dry_run {
-        println!(
-            "prepare: would stage {changelog} ({} bytes from convco {})",
-            body.len(),
-            plan.version()
-        );
-        println!(
-            "prepare: {} manifest(s) would change, {} file(s) in the touched set, worktree untouched",
-            edits.len(),
-            unique_count(&touched)
-        );
-    } else {
-        for edit in &edits {
-            let text = manifests
-                .iter()
-                .find(|(path, _)| path == edit.path())
-                .map(|(_, text)| text.as_str())
-                .ok_or_else(|| format!("prepare: {} was listed but not read", edit.path()))?;
-            fs::write(edit.path(), stage(text, edit))
-                .map_err(|error| format!("prepare: {}: {error}", edit.path()))?;
-        }
-        fs::write(&changelog, &body).map_err(|error| format!("prepare: {changelog}: {error}"))?;
-        println!(
-            "prepare: staged {} manifest(s) and {changelog} ({} bytes from convco {})",
-            edits.len(),
-            body.len(),
-            plan.version()
-        );
+    let writes = Writes {
+        manifests,
+        edits,
+        pins,
+        lockfiles,
+        unrefreshed,
+        changelog,
+        body,
+        version: plan.version().as_str().to_owned(),
+    };
+    writes.report(options.dry_run);
+    if !options.dry_run {
+        writes.apply()?;
     }
 
     if let Some(path) = options.out.as_deref() {
-        let recorded = plan.with_touched(touched).to_json();
+        let recorded = plan.with_touched(writes.touched()).to_json();
         fs::write(path, recorded).map_err(|error| format!("prepare: {path}: {error}"))?;
         println!("prepare: recorded the touched set in {path}");
     }
     Ok(())
+}
+
+/// Everything one prepare writes, decided before the first byte is written.
+///
+/// The fields mirror the stage sequence: the manifest literals, the pins beside them, the lockfiles
+/// that record the result, and the changelog. `manifests` keeps the text as read, because both
+/// editing stages rewrite the same document.
+struct Writes {
+    manifests: Vec<(String, String)>,
+    edits: Vec<Edit>,
+    pins: Vec<Edit>,
+    lockfiles: Vec<String>,
+    unrefreshed: Vec<String>,
+    changelog: String,
+    /// Convco's own bytes, written unchanged (`decision-6`).
+    body: Vec<u8>,
+    version: String,
+}
+
+impl Writes {
+    /// The paths this prepare claims to have written, in stage order.
+    fn touched(&self) -> Vec<String> {
+        let mut touched: Vec<String> = self
+            .edits
+            .iter()
+            .map(|edit| edit.path().to_owned())
+            .collect();
+        touched.extend(self.pins.iter().map(|edit| edit.path().to_owned()));
+        touched.extend(self.lockfiles.iter().cloned());
+        touched.push(self.changelog.clone());
+        touched
+    }
+
+    /// Prints one line per stage, in the order the core fixes ([`stages`]) rather than the order the
+    /// edits happen to be listed: the output is the only place an operator sees which step writes
+    /// what, so it has to be the order the steps run in.
+    fn report(&self, dry_run: bool) {
+        let verb = if dry_run { "would update" } else { "updated" };
+        for step in stages() {
+            match step {
+                Stage::Manifests => {
+                    for edit in &self.edits {
+                        println!(
+                            "prepare: {verb} {}: {} -> {}",
+                            edit.path(),
+                            edit.from(),
+                            edit.to()
+                        );
+                    }
+                }
+                Stage::Pins => {
+                    for edit in &self.pins {
+                        println!(
+                            "prepare: {verb} {}:{}: pin {} -> {}",
+                            edit.path(),
+                            edit.line().map_or(0, |line| line + 1),
+                            edit.from(),
+                            edit.to()
+                        );
+                    }
+                }
+                Stage::Generated => {}
+                Stage::Lockfiles => self.report_lockfiles(dry_run),
+                Stage::Changelog => {
+                    println!(
+                        "prepare: {} {} ({} bytes from convco {})",
+                        if dry_run { "would stage" } else { "staged" },
+                        self.changelog,
+                        self.body.len(),
+                        self.version
+                    );
+                }
+            }
+        }
+        if dry_run {
+            println!(
+                "prepare: {} manifest(s) and {} pin(s) would change, {} file(s) in the touched set, \
+                 worktree untouched",
+                self.edits.len(),
+                self.pins.len(),
+                unique_count(&self.touched())
+            );
+        }
+    }
+
+    /// The lockfile stage: what will be refreshed by Cargo, and what this release cannot refresh.
+    fn report_lockfiles(&self, dry_run: bool) {
+        for path in &self.lockfiles {
+            println!(
+                "prepare: {} {path} (cargo update --workspace, after the manifests agree)",
+                if dry_run {
+                    "would refresh"
+                } else {
+                    "refreshed"
+                }
+            );
+        }
+        for path in &self.unrefreshed {
+            println!(
+                "prepare: not refreshing {path}: no refresher for this format yet, so the plan \
+                 does not record it (REL-29)"
+            );
+        }
+    }
+
+    /// Applies the stages in order: manifests, then the pins in the same documents, then the
+    /// lockfiles that record them, then the changelog.
+    fn apply(&self) -> Result<(), String> {
+        let mut staged: std::collections::BTreeMap<String, String> =
+            self.manifests.iter().cloned().collect();
+        // Staging preserves the line count, so a pin's recorded line still points at its own
+        // literal after the manifest stage has run.
+        for edit in self.edits.iter().chain(self.pins.iter()) {
+            let text = staged
+                .get_mut(edit.path())
+                .ok_or_else(|| format!("prepare: {} was listed but not read", edit.path()))?;
+            *text = stage(text, edit);
+        }
+        for (path, text) in &staged {
+            fs::write(path, text).map_err(|error| format!("prepare: {path}: {error}"))?;
+        }
+        for path in &self.lockfiles {
+            refresh_lockfile(path)?;
+            println!("prepare: refreshed {path} (cargo update --workspace)");
+        }
+        fs::write(&self.changelog, &self.body)
+            .map_err(|error| format!("prepare: {}: {error}", self.changelog))?;
+        println!(
+            "prepare: staged {} manifest(s), {} pin(s) and {}",
+            self.edits.len(),
+            self.pins.len(),
+            self.changelog
+        );
+        Ok(())
+    }
+}
+
+/// Splits the declared lockfiles into the ones Cargo can refresh and the ones this release can only
+/// name: a silently stale lock is the failure the stage exists to prevent, so an unsupported format
+/// is printed rather than skipped (`REL-29`).
+fn lockfile_stages(
+    policy: &ReleasePolicy,
+    edits: &[Edit],
+    pins: &[Edit],
+) -> (Vec<String>, Vec<String>) {
+    let cargo_changed = edits
+        .iter()
+        .chain(pins.iter())
+        .any(|edit| edit.path().ends_with("Cargo.toml"));
+    let mut refreshable = Vec::new();
+    let mut unrefreshed = Vec::new();
+    for path in policy.lockfiles() {
+        if path.as_str() == "Cargo.lock" {
+            if cargo_changed {
+                refreshable.push(path.clone());
+            }
+        } else {
+            unrefreshed.push(path.clone());
+        }
+    }
+    (refreshable, unrefreshed)
+}
+
+/// Refreshes a Cargo lockfile so it records the versions the manifests now carry.
+///
+/// `--workspace` moves the members and nothing else, so no dependency is upgraded by a release.
+/// Offline is tried first because the vendored registry is enough when no new dependency appears;
+/// the online retry covers a machine that has one.
+fn refresh_lockfile(path: &str) -> Result<(), String> {
+    if path != "Cargo.lock" {
+        return Err(format!(
+            "prepare: {path}: no refresher knows this lockfile format yet (REL-29)"
+        ));
+    }
+    let mut failure = String::from("cargo update never ran");
+    for offline in [true, false] {
+        let mut command = std::process::Command::new("cargo");
+        command.args(["update", "--workspace"]);
+        if offline {
+            command.arg("--offline");
+        }
+        match command
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+        {
+            Ok(status) if status.success() => return Ok(()),
+            Ok(status) => failure = format!("cargo update exited {status}"),
+            Err(error) => failure = format!("cargo: {error}"),
+        }
+    }
+    Err(format!(
+        "prepare: {path}: could not refresh the lockfile ({failure})"
+    ))
 }
 
 /// `cut` validates everything, then stages exactly the plan's touched set, commits and tags.

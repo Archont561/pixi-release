@@ -1,7 +1,9 @@
 //! Dry-run preparation: it names the files it would change and changes none of them (REL-4).
 
 use pixi_release_core::plan::Version;
-use pixi_release_core::prepare::{changelog_target, stage, version_edits};
+use pixi_release_core::prepare::{
+    Edit, Stage, changelog_target, pin_edits, stage, stages, version_edits,
+};
 use proptest::prelude::*;
 use rstest::rstest;
 
@@ -217,5 +219,177 @@ proptest! {
         prop_assert!(version_edits([("manifest".to_owned(), once.clone())], &planned)
             .expect("still a literal")
             .is_empty());
+    }
+}
+
+/// A Cargo manifest whose workspace members are pinned at a literal version, plus two entries that
+/// must not move: one pinned without a path, and one path dependency with no literal at all.
+const WORKSPACE_CARGO: &str = r#"[workspace]
+members = ["crates/a", "crates/b"]
+
+[workspace.package]
+version = "0.1.0"
+
+[workspace.dependencies]
+crate-a = { path = "crates/a", version = "0.1.0" }
+crate-b = { path = "crates/b", version = "0.1.0" }
+serde = "1.0.229"
+local-only = { path = "../local" }
+"#;
+
+/// AC#1, AC#2: the manifest stage moves the declared version, and the pin stage moves the members
+/// that pin it — two edits, two lines, one document.
+#[rstest]
+fn pins_move_with_the_workspace_version() {
+    let planned = version("0.2.0");
+    let manifests = [("Cargo.toml".to_owned(), WORKSPACE_CARGO.to_owned())];
+
+    let declared =
+        version_edits(manifests.clone(), &planned).expect("the fixture carries a literal");
+    let pins = pin_edits(manifests.clone(), &planned).expect("the fixture pins two members");
+
+    assert_eq!(declared.len(), 1, "one declared version");
+    assert_eq!(
+        pins.iter().map(Edit::from).collect::<Vec<_>>(),
+        ["0.1.0", "0.1.0"],
+        "both path dependencies are pinned at the old version"
+    );
+    assert_eq!(
+        pins.iter().filter_map(Edit::line).collect::<Vec<_>>(),
+        [7, 8],
+        "each pin records its own line, so the writer needs no second scan"
+    );
+}
+
+/// A dependency pinned without a `path` belongs to someone else's release, and a path dependency
+/// without a literal has nothing to move: neither may be rewritten.
+#[rstest]
+fn a_pin_is_only_a_path_dependency_that_states_a_version() {
+    let planned = version("0.2.0");
+    let pins = pin_edits(
+        [("Cargo.toml".to_owned(), WORKSPACE_CARGO.to_owned())],
+        &planned,
+    )
+    .expect("readable pins");
+
+    assert!(
+        pins.iter().all(|edit| edit.to() == "0.2.0"),
+        "every edit targets the planned version"
+    );
+    assert_eq!(pins.len(), 2, "serde and local-only are not ours to move");
+
+    let staged = pins
+        .iter()
+        .fold(WORKSPACE_CARGO.to_owned(), |text, edit| stage(&text, edit));
+    assert!(
+        staged.contains(r#"serde = "1.0.229""#),
+        "an external requirement was rewritten:\n{staged}"
+    );
+    assert!(
+        staged.contains(r#"local-only = { path = "../local" }"#),
+        "a literal-free path dependency was rewritten:\n{staged}"
+    );
+    assert_eq!(staged.lines().count(), WORKSPACE_CARGO.lines().count());
+}
+
+/// A manifest that is not a Cargo manifest has no pins, and saying so is not an error.
+#[rstest]
+#[case("package.json")]
+#[case("crates/demo/Cargo.toml.bak")]
+#[case("recipe/recipe.yaml")]
+fn a_non_cargo_manifest_contributes_no_pins(#[case] path: &str) {
+    let pins = pin_edits(
+        [(path.to_owned(), WORKSPACE_CARGO.to_owned())],
+        &version("0.2.0"),
+    )
+    .expect("no pins, no refusal");
+    assert!(pins.is_empty(), "{path} must not be scanned for pins");
+}
+
+/// A member manifest's own dependencies are requirements, not pins: only the workspace table is
+/// ours. The table header is what separates the two, so a section that merely mentions `version`
+/// must not be read as one.
+#[rstest]
+fn only_the_workspace_dependency_table_is_scanned() {
+    let text = r#"[package]
+name = "demo"
+version = "0.1.0"
+
+[dependencies]
+crate-a = { path = "crates/a", version = "0.1.0" }
+
+[workspace.dependencies]
+crate-a = { path = "crates/a", version = "0.1.0" }
+"#;
+    let pins = pin_edits(
+        [("Cargo.toml".to_owned(), text.to_owned())],
+        &version("0.2.0"),
+    )
+    .expect("readable pin");
+    assert_eq!(pins.len(), 1, "only the workspace table carries a pin");
+    assert_eq!(pins[0].line(), Some(8));
+}
+
+/// A pin whose literal cannot be read is refused rather than left behind: the value is either
+/// there or the manifest is wrong.
+#[rstest]
+fn an_unreadable_pin_is_refused() {
+    let text = "[workspace.dependencies]\ncrate-a = { path = \"crates/a\", version = 1 }\n";
+    let refusal = pin_edits(
+        [("Cargo.toml".to_owned(), text.to_owned())],
+        &version("0.2.0"),
+    )
+    .expect_err("an unquoted pin cannot be staged");
+    assert_eq!(refusal.key(), "version.manifests");
+    assert!(
+        refusal.detail().contains("`:2"),
+        "the refusal names the line, zero-indexed as the writer sees it: {}",
+        refusal.detail()
+    );
+}
+
+/// AC#3, DoD#2: the stage order is data, and it is the order that cannot contradict itself. A
+/// reordering of `STAGES` fails here rather than shipping a renderer that reads the old version.
+#[rstest]
+fn the_stage_order_is_the_one_that_cannot_contradict_itself() {
+    assert_eq!(
+        stages(),
+        [
+            Stage::Manifests,
+            Stage::Pins,
+            Stage::Generated,
+            Stage::Lockfiles,
+            Stage::Changelog,
+        ],
+        "generated files read the stamped manifest, lockfiles record it, and the changelog is last"
+    );
+}
+
+proptest! {
+    /// Whatever a manifest says, the pin stage either moves a path dependency that states a
+    /// version or leaves the line alone: no edit may appear for an entry that is not both.
+    #[test]
+    fn a_pin_never_appears_without_a_path_and_a_literal(
+        name in "[a-z][a-z0-9-]{0,10}",
+        path in "[a-z][a-z0-9/_\\.-]{0,20}",
+        literal in "(0|[1-9])[0-9]?\\.[0-9]{1,2}\\.[0-9]{1,2}",
+        with_path in any::<bool>(),
+        with_literal in any::<bool>(),
+    ) {
+        let entry = match (with_path, with_literal) {
+            (true, true) => format!("{name} = {{ path = \"{path}\", version = \"{literal}\" }}\n"),
+            (true, false) => format!("{name} = {{ path = \"{path}\" }}\n"),
+            (false, true) => format!("{name} = \"{literal}\"\n"),
+            (false, false) => format!("{name} = {{ features = [] }}\n"),
+        };
+        let text = format!("[workspace.dependencies]\n{entry}");
+        let pins = pin_edits([("Cargo.toml".to_owned(), text)], &version("9.9.9"))
+            .expect("the fixture is readable");
+
+        prop_assert_eq!(pins.len(), usize::from(with_path && with_literal));
+        for edit in &pins {
+            prop_assert_eq!(edit.from(), literal.as_str());
+            prop_assert_eq!(edit.to(), "9.9.9");
+        }
     }
 }

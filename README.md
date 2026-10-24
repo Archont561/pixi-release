@@ -12,13 +12,13 @@
 
 ```console
 pixi release plan
-pixi release prepare --plan release-plan.json --dry-run
+pixi release prepare --plan release-plan.json
 pixi release cut --plan release-plan.json
 ```
 
 It decides *what* must be built, *where*, and *what must come back*. The repository decides *how*. The controller never runs a compiler. Design rules live in [`backlog/decisions/`](backlog/decisions/) and the specifications in [`backlog/docs/`](backlog/docs/).
 
-> **Scaffold status.** The repository contains a working three-crate Rust workspace and a cross-language task graph. `plan`, `prepare --dry-run` and `cut` are implemented against a local Git adapter: `plan` derives canonical JSON, `prepare` reports the edits it would make without touching the tree, and `cut` refuses anything unsafe before it commits, tags, and optionally pushes. Publication, artifact verification, and changelog writing are not implemented yet, and no command claims to publish or verify a release.
+> **Scaffold status.** The repository contains a working three-crate Rust workspace and a cross-language task graph. `plan`, `prepare` and `cut` are implemented against a local Git adapter: `plan` derives canonical JSON, `prepare` stages the version literals and the `CHANGELOG.md` that Convco generates (`--dry-run` reports the same work without touching the tree), and `cut` refuses anything unsafe before it commits, tags, and optionally pushes. Publication and artifact verification are not implemented yet, and no command claims to publish or verify a release.
 
 ## Quick start
 
@@ -47,7 +47,7 @@ pixi run package     # build the conda artifact into output/
 | :-- | :-- | :-- |
 | Authored release policy | Specified in `doc-3` §4; the file is not in this repository yet | `doc-3` §4, `crates/xtask/fixtures/consumers/` |
 | Immutable release plans | `plan` derives canonical JSON from the policy and two Git facts | `pixi-release-core`, `doc-1` |
-| Git safety for prepare and cut | `prepare --dry-run` records edits without writing; `cut` validates and never publishes | `pixi-release-git`, `decision-4` |
+| Git safety for prepare and cut | `prepare` stages the literals and the Convco changelog (`--dry-run` records the same edits without writing); `cut` validates and never publishes | `pixi-release-git`, `decision-4`, `decision-6` |
 | Consumer release workflows | Golden template in place; rendering planned. Generated files are never hand-edited | `crates/xtask/templates/workflows/`, `doc-2`, `decision-3` |
 | Release train | A milestone tag or a dispatch asks `autorelease` to derive the version from Convco and tag; `release` builds the conda artifact and publishes it to the project channel through OIDC. A `main` push only reports the version a release would get | `.github/workflows/`, `decision-14` |
 | Artifact verification and resumable publish | Planned | `doc-2` §3, `doc-3` §2.6 |

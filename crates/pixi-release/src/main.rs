@@ -14,7 +14,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use pixi_release_core::config::{ReleasePolicy, VersionSource};
 use pixi_release_core::cut::{self, check_repository};
 use pixi_release_core::plan::{Bump, Plan, PlanInputs, SourceRevision, Version, VersionAuthority};
-use pixi_release_core::prepare::version_edits;
+use pixi_release_core::prepare::{changelog_target, stage, version_edits};
 use pixi_release_git::LocalGit;
 use pixi_release_git::{FakeGit, GitProtocol};
 
@@ -35,7 +35,7 @@ struct Cli {
 enum Command {
     /// Derive the immutable release plan
     Plan(PlanOptions),
-    /// Report the edits a release needs, without writing them
+    /// Stage the planned literals and the Convco changelog (--dry-run reports only)
     Prepare(PrepareOptions),
     /// Validate the plan, then commit and tag it
     Cut(CutOptions),
@@ -110,9 +110,12 @@ struct PrepareOptions {
     /// Release policy to read
     #[arg(long, value_name = "PATH", default_value = ".pixi-release.toml")]
     policy_path: String,
-    /// Report the edits and write nothing; the only implemented mode
-    #[arg(long, required = true)]
+    /// Report the work and write nothing
+    #[arg(long)]
     dry_run: bool,
+    /// The changelog to stage; must be the path the policy names
+    #[arg(long, value_name = "PATH")]
+    changelog: Option<String>,
     /// Record the touched set into this plan file
     #[arg(long, value_name = "PATH")]
     out: Option<String>,
@@ -142,9 +145,7 @@ fn main() {
 fn run(cli: Cli) -> i32 {
     let outcome = match cli.command {
         Command::Plan(options) => run_plan(&options),
-        Command::Prepare(options) => {
-            run_prepare(&options.policy_path, &options.plan, options.out.as_deref())
-        }
+        Command::Prepare(options) => run_prepare(&options),
         Command::Cut(options) => run_cut(
             &options.policy_path,
             &options.plan,
@@ -239,6 +240,14 @@ fn resolve_authority(
     })
 }
 
+/// The number of distinct paths in a touched set, which may name one file twice.
+fn unique_count(paths: &[String]) -> usize {
+    let mut unique = paths.to_vec();
+    unique.sort();
+    unique.dedup();
+    unique.len()
+}
+
 /// Writes the plan where the caller asked, or prints it, and does nothing else.
 fn emit(plan: &Plan, out: Option<&str>) -> Result<(), String> {
     if let Some(path) = out {
@@ -254,46 +263,79 @@ fn emit(plan: &Plan, out: Option<&str>) -> Result<(), String> {
     Ok(())
 }
 
-/// `prepare --dry-run` names the changes a prepare would make and makes none of them.
+/// `prepare` writes the plan into the worktree — the version literals it names, and the changelog
+/// Convco generates for that version — and `--dry-run` reports the same work without touching a
+/// tracked file (REL-8).
 ///
-/// REL-4 ships the dry run only: writing the literals and regenerating the changelog land with
-/// REL-8, so this command has no mode that touches a tracked file.
-fn run_prepare(policy_path: &str, plan_path: &str, out: Option<&str>) -> Result<(), String> {
-    let policy = policy::load(policy_path, policy::context())?;
-    let plan = read_plan(plan_path)?;
+/// Convco is asked for the changelog before anything is written, so a refusal leaves the worktree
+/// exactly as it was. The staged changelog is Convco's own bytes: this command writes no
+/// release-note text of its own (`decision-6`).
+fn run_prepare(options: &PrepareOptions) -> Result<(), String> {
+    let policy = policy::load(&options.policy_path, policy::context())?;
+    let plan = read_plan(&options.plan)?;
+
+    let changelog = changelog_target(policy.changelog(), options.changelog.as_deref())
+        .map_err(|refusal| format!("prepare: {refusal}"))?;
 
     let mut manifests = Vec::new();
     for path in policy.manifests() {
         let text = fs::read_to_string(path).map_err(|error| format!("prepare: {path}: {error}"))?;
         manifests.push((path.clone(), text));
     }
-    let edits = version_edits(manifests, plan.version())
+    let edits = version_edits(manifests.clone(), plan.version())
         .map_err(|refusal| format!("prepare: {refusal}"))?;
+
+    let body = policy::convco_changelog(plan.version().as_str())?;
 
     let mut touched: Vec<String> = edits.iter().map(|edit| edit.path().to_owned()).collect();
     touched.extend(policy.lockfiles().iter().cloned());
-    touched.push(policy.changelog().to_owned());
+    touched.push(changelog.clone());
 
     for edit in &edits {
         println!(
-            "prepare: would update {}: {} -> {}",
+            "prepare: {} {}: {} -> {}",
+            if options.dry_run {
+                "would update"
+            } else {
+                "updated"
+            },
             edit.path(),
             edit.from(),
             edit.to()
         );
     }
-    println!(
-        "prepare: {} manifest(s) would change, {} file(s) in the touched set, worktree untouched",
-        edits.len(),
-        {
-            let mut unique = touched.clone();
-            unique.sort();
-            unique.dedup();
-            unique.len()
-        }
-    );
 
-    if let Some(path) = out {
+    if options.dry_run {
+        println!(
+            "prepare: would stage {changelog} ({} bytes from convco {})",
+            body.len(),
+            plan.version()
+        );
+        println!(
+            "prepare: {} manifest(s) would change, {} file(s) in the touched set, worktree untouched",
+            edits.len(),
+            unique_count(&touched)
+        );
+    } else {
+        for edit in &edits {
+            let text = manifests
+                .iter()
+                .find(|(path, _)| path == edit.path())
+                .map(|(_, text)| text.as_str())
+                .ok_or_else(|| format!("prepare: {} was listed but not read", edit.path()))?;
+            fs::write(edit.path(), stage(text, edit))
+                .map_err(|error| format!("prepare: {}: {error}", edit.path()))?;
+        }
+        fs::write(&changelog, &body).map_err(|error| format!("prepare: {changelog}: {error}"))?;
+        println!(
+            "prepare: staged {} manifest(s) and {changelog} ({} bytes from convco {})",
+            edits.len(),
+            body.len(),
+            plan.version()
+        );
+    }
+
+    if let Some(path) = options.out.as_deref() {
         let recorded = plan.with_touched(touched).to_json();
         fs::write(path, recorded).map_err(|error| format!("prepare: {path}: {error}"))?;
         println!("prepare: recorded the touched set in {path}");

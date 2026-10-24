@@ -102,6 +102,38 @@ pub fn convco_next_version(bump: Bump) -> Result<String, String> {
     Ok(version)
 }
 
+/// Asks Convco to write the changelog for `version`, and returns its bytes untouched.
+///
+/// Capture rather than `convco changelog --output`: the dry run can then report what would be
+/// staged without creating the file, and the write stays a single atomic call. The text is still
+/// Convco's — pixi-release contributes no release-note text of its own (`decision-6`).
+///
+/// # Errors
+///
+/// Returns a message when Convco is missing, refuses, or produces nothing.
+pub fn convco_changelog(version: &str) -> Result<Vec<u8>, String> {
+    let output = Command::new("convco")
+        .arg("changelog")
+        .arg("--unreleased")
+        .arg(version)
+        .output()
+        .map_err(|error| {
+            format!(
+                "prepare: convco is unavailable ({error}); it writes the changelog (decision-6)"
+            )
+        })?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("prepare: convco refused ({})", stderr.trim()));
+    }
+    if output.stdout.is_empty() {
+        return Err(format!(
+            "prepare: convco produced no changelog for {version}"
+        ));
+    }
+    Ok(output.stdout)
+}
+
 fn installed_convco_version() -> Result<String, String> {
     let output = Command::new("convco")
         .arg("--version")

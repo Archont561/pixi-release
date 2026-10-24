@@ -205,7 +205,10 @@ where
     {
         return Err(CutRefusal::new(
             "worktree",
-            format!("`{unaccounted}` changed but the plan did not record it"),
+            format!(
+                "`{unaccounted}` changed but the plan did not record it; run prepare again if it \
+                 belongs to the release, or revert it if it does not"
+            ),
         ));
     }
     if git.dirty_paths().is_empty() {

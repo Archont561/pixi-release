@@ -757,9 +757,18 @@ fn cut_refuses_a_change_outside_the_recorded_set(cli_bin: &str) {
         .expect("binary should run");
 
     assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("worktree"),
-        "the refusal names the fact"
+        stderr.contains("worktree"),
+        "the refusal names the fact: {stderr}"
+    );
+    assert!(
+        stderr.contains("notes.md"),
+        "the refusal names the path that changed: {stderr}"
+    );
+    assert!(
+        stderr.contains("run prepare") && stderr.contains("revert"),
+        "the refusal names the remedy, not only the fault: {stderr}"
     );
 }
 

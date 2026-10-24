@@ -4,7 +4,7 @@ title: Run the owner-lane release train
 status: In Progress
 assignee: []
 created_date: '2026-10-24 15:57'
-updated_date: '2026-10-24 18:12'
+updated_date: '2026-10-24 19:16'
 labels:
   - release
   - ci
@@ -24,7 +24,7 @@ Both halves of the release lane from decision-14: autorelease.yml decides and ta
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 autorelease derives the version from Convco, refuses to re-release an existing tag, runs the gates and a packaging check before tagging, and dispatches release.yml after pushing the tag.
-- [ ] #2 release stamps the tagged version into the manifests and the recipe, proves agreement with repo-check, and refuses to publish an artifact whose filename does not match the tag.
+- [ ] #2 release verifies that the tagged tree already carries the tagged version — the three manifests and the recipe — refusing with the path that disagrees, and refuses to publish an artifact whose filename does not match the tag; it never writes a version into the tree after the tag exists.
 - [x] #3 Publishing to channel archont561/archont561 uses GitHub OIDC under the prefix environment with id-token: write and no stored token; a prerelease tag skips the upload.
 - [x] #4 A GitHub Release carries the same artifact bytes plus SHA256SUMS.
 - [ ] #5 One dispatched run proves the lane end to end, because YAML actionlint accepts has not thereby executed.
@@ -76,4 +76,6 @@ AC#4 is checked on that evidence. AC#5 stays open: this run exercised the last j
 Side evidence, same day: a `workflow_dispatch` of `autorelease` naming the existing version (40117631616) finished in 38s having pushed nothing — the `skip` branch, "a version is never re-released (decision-7)" — which is the first observation of that guard on the dispatch path.
 
 Sequenced, 2026-10-24 — AC#2 now has an owner. The deficiency recorded above (the stamp step was a no-op on v0.1.0, and the filename guard never saw a negative case) cannot be fixed inside the release lane without changing where the version is written: a publish job must consume a tree that already agrees with its tag. REL-30 moves the write into prepare, stages exactly the reported set in commit, and tags the commit it just made, then deletes the stamp step from release.yml. AC#2 is expected to close against a run of that shape, not against another repair. Ordering: doc-11.
+
+AC#2 re-scoped, 2026-10-24 (REL-30): the release lane no longer stamps a version into the tagged tree — a publish job that rewrites the tree it is publishing builds an artifact no tag describes. The step is now "Verify the tagged tree already carries the tagged version": `xtask check --tag <tag>` compares Cargo.toml, pixi.toml, package.json and the recipe's context.version to the tag and refuses with the path that disagrees. AC#2 therefore closes when a release run passes that step; it is no longer waiting for a run that stamps a version differing from the manifests, because no run writes one any more.
 <!-- SECTION:NOTES:END -->

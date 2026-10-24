@@ -98,36 +98,18 @@ jobs:
             echo "prerelease=${prerelease}"
           } >> "$GITHUB_OUTPUT"
 
-      # Bootstrap, and named so it can be deleted: `prepare` cannot write version literals yet
-      # (REL-4 shipped the dry run), so the tagged version is stamped into the manifests here.
-      # Once prepare writes them, this step becomes a check that they already agree.
-      - name: Stamp the tagged version into the manifests
+      # The tag describes the tree; it never rewrites it. Building from a tree the tag does not
+      # name produces an artifact no tag describes, which is what the stamp this replaced did
+      # (REL-30). `--tag` compares every version literal — the three manifests and the recipe — and
+      # names the path that disagrees, so a mislabelled tag stops here rather than at upload.
+      - name: Verify the tagged tree already carries the tagged version
         shell: bash
         env:
-          VERSION: ${{ steps.classify.outputs.version }}
+          TAG: ${{ steps.classify.outputs.tag_name }}
         run: |
           set -euo pipefail
-          python3 - "${VERSION}" <<'PY'
-          import re
-          import sys
-          from pathlib import Path
-
-          new = sys.argv[1]
-          cargo = Path("Cargo.toml").read_text()
-          package = re.search(r"\[workspace\.package\](.*?)(\n\[|\Z)", cargo, re.S).group(1)
-          old = re.search(r'version = "([^"]+)"', package).group(1)
-          if old == new:
-              print(f"manifests already at {new}")
-              raise SystemExit(0)
-          for name in ("Cargo.toml", "pixi.toml", "package.json", "crates/pixi-release/recipe/recipe.yaml"):
-              path = Path(name)
-              path.write_text(path.read_text().replace(old, new))
-          print(f"stamped {old} -> {new}")
-          PY
-          # The lock records the workspace version, so it has to agree before `--locked` builds.
-          pixi run --frozen -- cargo metadata --format-version 1 > /dev/null
-          # Proven rather than assumed: the recipe, the manifests and the policy agree.
-          pixi run --frozen repo-check
+          pixi run --frozen -- cargo run --quiet --manifest-path Cargo.toml -p xtask -- check \
+            --tag "${TAG}"
 
       - name: Build the conda artifact
         run: pixi run --frozen package

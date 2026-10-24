@@ -1,0 +1,17 @@
+# Variant configuration for the compiler toolchain `recipe.yaml` asks for.
+#
+# `recipe.yaml` renders `${{ compiler('c') }}` and `${{ stdlib('c') }}`. The compiler has a
+# platform default, but the C standard library does not: without a `c_stdlib` entry the recipe
+# fails to render at all, before a single dependency is solved
+# (`Template rendering failed: undefined value: No stdlib found for language: c`). This file is
+# auto-discovered because it sits next to the recipe, so the `package` task needs no extra flag.
+#
+# `sysroot` + glibc 2.17 is what conda-forge builds against: the binary records `__glibc >=2.17`
+# instead of inheriting the glibc of whatever machine compiled it, which is what makes the
+# artifact installable on older distributions than the runner (`decision-8`: releases rebuild).
+#
+# Only keys the recipe actually uses belong here; adding a key turns it into a build variant.
+c_stdlib:
+  - sysroot
+c_stdlib_version:
+  - "2.17"

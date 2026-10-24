@@ -1,5 +1,5 @@
 # Codecov configuration for pixi-release. Coverage is uploaded only by a CI job that runs the
-# Rust and TypeScript suites with instrumentation; this file governs how the reports are judged.
+# Rust suites with instrumentation; this file governs how the reports are judged.
 codecov:
   require_ci_to_pass: true
 

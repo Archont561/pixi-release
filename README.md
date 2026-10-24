@@ -72,11 +72,10 @@ This repository is a single-root Cargo workspace plus a Bun workspace, both driv
 | `crates/pixi-release-core` | Release-domain types and deterministic planning invariants. |
 | `crates/pixi-release-git` | Semantic Git port (`GitProtocol`) plus a stateful fake for unit tests. |
 | `crates/pixi-release` | The `pixi-release` executable: `clap` grammar, policy load, and presentation. |
-| `crates/xtask` | Owner-lane repository automation: Rust checks, the TypeScript workspace scripts, golden templates, and consumer fixtures. It is not the product, and it is deleted once a pinned prior release can do its job. |
+| `crates/xtask` | Owner-lane repository automation: the `clap` CLI behind `pixi run repo-check`, golden templates, and consumer fixtures. It is not the product, and it is deleted once a pinned prior release can do its job. |
 | `crates/package.json` | Turbo façade for Cargo, covering every member. |
 | `crates/xtask/templates/workflows/` | Golden renderer templates for the consumer lane. |
 | `crates/xtask/fixtures/consumers/` | Miniature consumer repositories in the shapes the renderer must satisfy. |
-| `crates/xtask/scripts/` | TypeScript workspace-contract checks and their tests, run by `pixi run build`, `typecheck`, and `test`. |
 | `backlog/` | Canonical tasks, milestones, decisions, and project documents, managed only through Backlog.md. |
 | `.agents/skills/` | Agent skills for this repository, including `session` for work sessions. |
 
@@ -86,7 +85,7 @@ This repository is a single-root Cargo workspace plus a Bun workspace, both driv
 pixi run setup       # Bun install and Git hooks
 pixi run lint        # Turbo lint
 pixi run typecheck   # Turbo type-check
-pixi run test        # Turbo test (Rust and TypeScript)
+pixi run test        # Turbo test (the Cargo workspace, xtask included)
 pixi run build       # Turbo build
 pixi run fmt         # Turbo format
 pixi run gates       # every required pre-merge check

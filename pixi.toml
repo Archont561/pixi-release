@@ -41,7 +41,7 @@ setup = { depends-on = ["bun-install", "hooks-install"], description = "Material
 # route CI, hooks, and humans through the same Bun/Turbo graph.
 build = { cmd = "bun run all:build", depends-on = ["bun-install"], description = "Turbo build across every workspace package" }
 test = { cmd = "bun run all:test", depends-on = ["bun-install"], description = "Turbo test across every workspace package" }
-coverage = { cmd = "bun run all:coverage", depends-on = ["bun-install"], description = "Turbo tests with Rust and TypeScript coverage reports" }
+coverage = { cmd = "bun run all:coverage", depends-on = ["bun-install"], description = "Turbo tests with the Rust coverage report" }
 typecheck = { cmd = "bun run all:typecheck", depends-on = ["bun-install"], description = "Turbo type-check across every workspace package" }
 lint = { cmd = "bun run all:lint", depends-on = ["bun-install"], description = "Turbo lint across every workspace package" }
 fmt = { cmd = "bun run all:fmt", depends-on = ["bun-install"], description = "Turbo format across every workspace package" }

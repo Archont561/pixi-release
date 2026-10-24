@@ -7,5 +7,13 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[dependencies]
+# The same grammar crate the product uses (decision-13): one CLI dialect, one place that parses
+# argv. Already a workspace dependency, so the lockfile does not grow.
+clap = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
 [lints]
 workspace = true

@@ -3,7 +3,7 @@ id: doc-9
 title: Roadmap
 type: specification
 created_date: '2026-10-20 19:06'
-updated_date: '2026-10-23 15:58'
+updated_date: '2026-10-24 15:38'
 ---
 
 ## Status
@@ -77,6 +77,12 @@ These are real work, deliberately not in v1:
 Answered in `decision-10` and REL-9 (done): entrypoint is `pixi global install` from the project
 channel, renderer scope is release lane only, `pixi-sandbox` and `pixi-release` own separate
 workflow files with distinct markers, and v0.1.0 is clean-room rather than seeded from `pixi-sandbox`'s `xtask`.
+
+## Sprint plans
+
+Scope is per sprint and lives in `backlog/docs/plan/`, one document per sprint: the ordered task
+list, the exit condition, and the release decision. A milestone description cannot be edited through
+the CLI, so the sprint plan — not the milestone — carries that detail. `doc-10` is Sprint 1.
 
 ## Corrections made
 

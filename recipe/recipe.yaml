@@ -1,4 +1,7 @@
-# The `pixi-release` conda package: `pixi run -e package package`.
+# The `pixi-release` conda package: `pixi run package`.
+#
+# `variants.yaml` beside this file supplies `c_stdlib`, which `${{ stdlib('c') }}` below requires;
+# without it the recipe does not render (REL-27, run 40109716135).
 #
 # `convco` is a **run** dependency, never a build one. The controller executes it
 # (`convco version --bump`, `convco check`) and links nothing of it (`decision-6`), so declaring

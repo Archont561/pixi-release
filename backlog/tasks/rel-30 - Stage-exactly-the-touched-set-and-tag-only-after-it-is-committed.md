@@ -4,7 +4,7 @@ title: Stage exactly the touched set and tag only after it is committed
 status: In Progress
 assignee: []
 created_date: '2026-10-24 18:11'
-updated_date: '2026-10-24 19:17'
+updated_date: '2026-10-24 19:24'
 labels:
   - release
   - testing
@@ -32,7 +32,7 @@ A publish job must consume a tree that already agrees with its tag. Today releas
 - [ ] #2 cut tags the commit commit created, and refuses when HEAD is not that commit or the tag already exists on the remote.
 - [x] #3 release.yml no longer stamps a version: the build job verifies that the tagged tree already agrees with the tag and fails with the disagreeing path when it does not.
 - [ ] #4 REL-27 AC#2 becomes provable: a run whose tag names a version the manifests do not carry fails at the check, and a run whose tag matches passes without editing anything.
-- [ ] #5 Proven by a green gates run on the merge commit, including a bare-remote fixture that exercises push, tag and the refusals.
+- [x] #5 Proven by a green gates run on the merge commit, including a bare-remote fixture that exercises push, tag and the refusals.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -51,4 +51,6 @@ AC#3/#4: the stamp step is deleted from `release.yml`; the build job now runs `x
 Proof: `pixi run --frozen gates` exit 0 (fmt, clippy -D warnings, workspace tests including 12 xtask tests, actionlint, workflow check, repo-check). AC#5 pending the merge-commit run.
 
 DoD#1 measured: `grep -rn stamp .github/workflows pixi.toml crates --include=*.{yml,yaml,toml,mjs,ts}` finds only the comment explaining what the deleted step did. There are five hand-written workflows (autorelease, ci, publish-sandbox, release, relock) and no rendered one yet — the renderer is REL-5 — so the owner lane was the only place the pattern existed.
+
+Merge proof: PR #51 → merge commit `22e0dc8`; branch run `40124721058` success (gates 2m46s, package 40s), `main` push run `40124947471` success, `autorelease` `40124947470` success (observe path, no tag). AC#5 checked — the `pixi-release-git` suite with its bare-remote fixture runs inside `gates`. REL-30 stays In Progress: AC#2's remote-tag half and AC#4's workflow-level negative run are open and recorded above.
 <!-- SECTION:NOTES:END -->

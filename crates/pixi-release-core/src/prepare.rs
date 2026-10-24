@@ -3,6 +3,13 @@
 //! The manifest contents are inputs, so this module never opens a file. An `Edit` is a `from`/`to`
 //! record, `stage` turns it into the document it describes, and `changelog_target` decides which
 //! path may receive Convco's output — the CLI performs the I/O and never the text (`decision-6`).
+//!
+//! A prepare is a sequence of **stages**, and the sequence is data too ([`STAGES`]): the literals a
+//! manifest carries, then the internal pins that must move with them, then the generated files that
+//! read the manifest, then the lockfiles that record the result, and the changelog last. The order
+//! cannot be a comment, because every step after the first reads what the step before wrote — a
+//! renderer that runs before the stamp writes the previous version into the release (pixi-sandbox
+//! v0.5.3), and a lockfile refreshed before the manifests keeps the old one (REL-29).
 
 use std::fmt;
 
@@ -14,6 +21,9 @@ pub struct Edit {
     path: String,
     from: String,
     to: String,
+    /// The line the literal sits on, when the producer knows it. `None` means "find it with the
+    /// same scan that found the literal", which is what the manifest stage does.
+    line: Option<usize>,
 }
 
 impl Edit {
@@ -34,6 +44,46 @@ impl Edit {
     pub fn to(&self) -> &str {
         &self.to
     }
+
+    /// The line the literal sits on, when the producer recorded one.
+    #[must_use]
+    pub fn line(&self) -> Option<usize> {
+        self.line
+    }
+}
+
+/// The steps a prepare applies, in the only order that cannot contradict itself.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Stage {
+    /// The version literals the policy names.
+    Manifests,
+    /// Path dependencies that pin a workspace member at a literal version.
+    Pins,
+    /// Generated files, which read the stamped manifest when they are rendered.
+    Generated,
+    /// Lockfiles, which record what the manifests just said.
+    Lockfiles,
+    /// Convco's changelog for the version being cut (`decision-6`).
+    Changelog,
+}
+
+/// The canonical stage order. Every stage reads what the one before it wrote, so this list is the
+/// contract: `Generated` after `Manifests` (a renderer that runs first stamps the previous
+/// version), `Lockfiles` after both (a lock refreshed early keeps the old members), and
+/// `Changelog` last (it is the only stage that does not feed another).
+pub const STAGES: [Stage; 5] = [
+    Stage::Manifests,
+    Stage::Pins,
+    Stage::Generated,
+    Stage::Lockfiles,
+    Stage::Changelog,
+];
+
+/// The stage order a caller must apply. Exposed as data so a test can pin it, rather than as a
+/// comment a reordering would leave true.
+#[must_use]
+pub fn stages() -> &'static [Stage] {
+    &STAGES
 }
 
 /// A refusal to describe a preparation, naming the manifest at fault.
@@ -129,9 +179,86 @@ where
             path,
             from: current,
             to: target.as_str().to_owned(),
+            line: None,
         });
     }
     Ok(edits)
+}
+
+/// Reports the internal pins a prepare must move: path dependencies that also carry a literal
+/// version, inside a Cargo `[workspace.dependencies]` table.
+///
+/// Cargo resolves a `path` dependency by the path alone, so the literal beside it looks decorative
+/// — and is not. `cargo-deny` treats an unpinned workspace dependency as a wildcard, and a member
+/// whose pin lags the workspace version is a published package claiming to depend on a release that
+/// does not exist. `[workspace.dependencies]` is the one table where the two spellings meet, so the
+/// scan is anchored on the table header rather than on a line that happens to mention `version`:
+/// `.dependencies` of a *crate* name their requirements, not our own version.
+///
+/// A manifest that is not a Cargo manifest has no pins, and a table entry with no `version` has
+/// none to move; neither is an error. An entry that has both and whose literal cannot be read is
+/// refused, because "the pin exists" and "its value is unreadable" cannot both be true.
+///
+/// # Errors
+///
+/// Returns `version.manifests` naming the Cargo manifest and the line whose pin is unreadable.
+pub fn pin_edits<I>(manifests: I, target: &Version) -> Result<Vec<Edit>, PrepareRefusal>
+where
+    I: IntoIterator<Item = (String, String)>,
+{
+    let mut edits = Vec::new();
+    for (path, text) in manifests {
+        if !is_cargo_manifest(&path) {
+            continue;
+        }
+        let mut in_workspace_dependencies = false;
+        for (index, line) in text.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with('[') {
+                in_workspace_dependencies = trimmed == "[workspace.dependencies]";
+                continue;
+            }
+            if !in_workspace_dependencies || !trimmed.contains("path") {
+                continue;
+            }
+            let Some(rest) = trimmed.split_once("version").map(|(_, rest)| rest) else {
+                continue; // a path dependency with no literal has none to move
+            };
+            let Some(literal) = quoted_after_equals(rest) else {
+                return Err(PrepareRefusal::new(
+                    "version.manifests",
+                    format!(
+                        "`{path}`:{}: a path dependency names a version this scan cannot read, \
+                         so the pin would silently stay behind",
+                        index + 1
+                    ),
+                ));
+            };
+            if literal == target.as_str() {
+                continue;
+            }
+            edits.push(Edit {
+                path: path.clone(),
+                from: literal,
+                to: target.as_str().to_owned(),
+                line: Some(index),
+            });
+        }
+    }
+    Ok(edits)
+}
+
+/// Whether the policy entry is a Cargo manifest, by file name and nothing else.
+fn is_cargo_manifest(path: &str) -> bool {
+    path.rsplit(['/', '\\']).next() == Some("Cargo.toml")
+}
+
+/// Reads the quoted literal that follows `=`, tolerating spaces around it.
+fn quoted_after_equals(text: &str) -> Option<String> {
+    let rest = text.split_once('=')?.1.trim_start();
+    let rest = rest.strip_prefix('"')?;
+    let (literal, _) = rest.split_once('"')?;
+    (!literal.is_empty()).then(|| literal.to_owned())
 }
 
 /// Writes `edit` into `text`, replacing one literal and leaving the rest of the document alone.
@@ -142,8 +269,12 @@ where
 /// `prepare` recomputes its edits from the files it just read, so this is a consistency guard.
 #[must_use]
 pub fn stage(text: &str, edit: &Edit) -> String {
-    let Some((line_number, _)) = version_value(text) else {
-        return text.to_owned();
+    let line_number = match edit.line() {
+        Some(line) => line,
+        None => match version_value(text) {
+            Some((line, _)) => line,
+            None => return text.to_owned(),
+        },
     };
     let from = format!("\"{}\"", edit.from());
     let to = format!("\"{}\"", edit.to());

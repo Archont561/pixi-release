@@ -446,6 +446,10 @@ fn prepare_dry_run_reports_edits_without_touching_the_worktree(cli_bin: &str) {
         "{stdout}"
     );
     assert!(stdout.contains("worktree untouched"), "{stdout}");
+    assert!(
+        stdout.contains("would stage CHANGELOG.md"),
+        "the dry run must name the changelog it would write: {stdout}"
+    );
     assert_eq!(
         std::fs::read_to_string(repo.join("Cargo.toml")).expect("manifest"),
         before,
@@ -456,9 +460,10 @@ fn prepare_dry_run_reports_edits_without_touching_the_worktree(cli_bin: &str) {
     assert!(recorded_text.contains("\"touched\""), "{recorded_text}");
 }
 
-/// `prepare` without `--dry-run` is refused, because writing manifests does not exist yet.
+/// AC#1, AC#2: `prepare` stages the changelog Convco generates, byte for byte, and the manifest
+/// literal it planned. Nothing in pixi-release writes release-note text (`decision-6`).
 #[rstest]
-fn prepare_without_dry_run_is_refused(cli_bin: &str) {
+fn prepare_stages_the_changelog_convco_generates(cli_bin: &str) {
     let (scratch, repo) = release_repo();
     let plan = scratch.path().join("plan.json");
     write_plan(cli_bin, &repo, &plan);
@@ -469,8 +474,67 @@ fn prepare_without_dry_run_is_refused(cli_bin: &str) {
         .output()
         .expect("binary should run");
 
-    assert_eq!(output.status.code(), Some(2));
-    assert!(String::from_utf8_lossy(&output.stderr).contains("--dry-run"));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let generated = Command::new("convco")
+        .args(["changelog", "--unreleased", "0.2.0"])
+        .current_dir(&repo)
+        .output()
+        .expect("convco should run");
+    assert!(generated.status.success());
+    assert_eq!(
+        std::fs::read_to_string(repo.join("CHANGELOG.md")).expect("changelog"),
+        String::from_utf8_lossy(&generated.stdout),
+        "the staged changelog must be Convco's own bytes"
+    );
+    assert!(
+        std::fs::read_to_string(repo.join("Cargo.toml"))
+            .expect("manifest")
+            .contains("version = \"0.2.0\""),
+        "the planned literal must be staged"
+    );
+}
+
+/// AC#3: a changelog path the policy does not name is refused by key, naming both paths, and
+/// nothing is staged — not even the manifest literals.
+#[rstest]
+fn prepare_refuses_a_changelog_path_the_policy_does_not_name(cli_bin: &str) {
+    let (scratch, repo) = release_repo();
+    let plan = scratch.path().join("plan.json");
+    write_plan(cli_bin, &repo, &plan);
+    let changelog_before = std::fs::read_to_string(repo.join("CHANGELOG.md")).expect("changelog");
+
+    let output = Command::new(cli_bin)
+        .args([
+            "prepare",
+            "--plan",
+            plan.to_str().expect("utf-8 path"),
+            "--changelog",
+            "docs/CHANGELOG.md",
+        ])
+        .current_dir(&repo)
+        .output()
+        .expect("binary should run");
+
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("version.changelog"), "{stderr}");
+    assert!(stderr.contains("docs/CHANGELOG.md"), "{stderr}");
+    assert_eq!(
+        std::fs::read_to_string(repo.join("CHANGELOG.md")).expect("changelog"),
+        changelog_before,
+        "the changelog was not rewritten"
+    );
+    assert!(
+        std::fs::read_to_string(repo.join("Cargo.toml"))
+            .expect("manifest")
+            .contains("version = \"0.1.0\""),
+        "the manifest was not staged either"
+    );
 }
 
 /// AC#2: a change the plan did not record is refused before anything is staged.

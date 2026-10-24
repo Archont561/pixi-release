@@ -75,15 +75,23 @@ The sprint is done when all four hold:
 
 1. **m-1 closes.** REL-5 and REL-8 are `Done`, each proven by a green `pixi run gates` on its own
    merge commit.
-2. **v0.2.0 is cut.** `plan` → `prepare` → `cut --push` on `main`, producing an annotated tag whose
-   body carries `pixi-release-version`, `plan-digest` and `policy-digest` (`decision-4`).
+2. **A released artifact exists, and the train cut it.** The sprint ends by *asking* for a release
+   — a dispatch, or a milestone tag (`decision-14` §4, §9) — and `release.yml` publishes the
+   artifact to `archont561/archont561` under the `prefix` binding. The version is Convco's, not
+   this document's (`decision-6`); the tag body is the changelog section, not `cut`'s trailers,
+   because `decision-14` §3 defers those to REL-7 and REL-7 is Sprint 2's opening work. **No
+   Sprint-1 exit therefore depends on `plan` → `prepare` → `cut --push`**, and the assertion that
+   it did is withdrawn: as originally written this criterion could not be met by the sprint that
+   wrote it. The train's first run (`v0.1.0`, REL-27) is what proves the path; a later dispatch
+   spends the version the sprint earned.
 3. **m-2 records 2/4.** REL-11 and REL-12 `Done`; REL-6 and REL-7 remain, named as Sprint 2's
    opening work.
 4. **The report exists.** Session report plus the next sprint's opening prompt, in the shape
    `.agents/skills/session/standup-template.md` prescribes.
 
-If criterion 2 cannot be met, criterion 1 still closes the milestone, and the report states which
-refusal key from `cut` stopped it. A refused cut is a result, not a failure.
+If criterion 2 cannot be met, criterion 1 still closes the milestone, and the report names the
+step that stopped it — the failing step of the train run, or (once REL-7 lands) `cut`'s refusal
+key. A refused cut is a result, not a failure.
 
 ## 5. The release path, and what it still needs
 

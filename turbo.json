@@ -43,19 +43,6 @@
     },
     "fmt": {
       "cache": false
-    },
-    "//#coverage": {
-      "outputs": [],
-      "cache": false
-    },
-    "//#build": {
-      "outputs": []
-    },
-    "//#test": {
-      "outputs": []
-    },
-    "//#typecheck": {
-      "outputs": []
     }
   },
   "globalPassThroughEnv": [

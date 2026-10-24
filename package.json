@@ -14,11 +14,7 @@
     "all:typecheck": "bun x turbo run typecheck",
     "all:lint": "bun x turbo run lint",
     "all:fmt": "bun x turbo run fmt",
-    "build": "bun run crates/xtask/scripts/verify-workspace.ts --build",
-    "test": "bun test crates/xtask/scripts",
-    "typecheck": "bun run crates/xtask/scripts/verify-workspace.ts --typecheck",
     "all:coverage": "bun x turbo run coverage",
-    "coverage": "bun test --coverage --coverage-reporter=lcov --coverage-dir=coverage crates/xtask/scripts",
     "skills:restore": "skills experimental_install"
   },
   "devDependencies": {

@@ -10,53 +10,56 @@
 //! which is precisely the second command path `AGENTS.md` forbids. Until that day arrives,
 //! xtask deliberately ships repository checks only — no release subcommands exist yet.
 //!
-//! Intentionally dependency-free: the crate that checks the lockfile should not enlarge it.
+//! `clap` owns the grammar, exactly as it does for the product (`decision-13`): one CLI dialect in
+//! the repository, with one place that parses `argv` and one place that prints usage. It is the
+//! crate's only dependency, and it was already in the workspace for `pixi-release`, so checking the
+//! lockfile does not enlarge it.
+//!
+//! There is no TypeScript here. The workspace contract this crate asserts used to live in
+//! `crates/xtask/scripts/*.ts` and needed a Bun install to answer a question about `Cargo.toml`;
+//! the checks and their tests are Rust now, so `cargo test --workspace` is the only tool a
+//! contributor needs to see them fail.
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const USAGE: &str = "xtask <check> [--tag <tag>]";
+use clap::{Parser, Subcommand};
 
 /// Reads a version literal out of one manifest dialect.
 type VersionReader = fn(&str) -> Option<String>;
 
-fn main() {
-    let arguments: Vec<String> = std::env::args().skip(1).collect();
-    let root = repository_root();
-    let exit_code = match invocation(&arguments) {
-        Ok(None) => run_checks(&root, None),
-        Ok(Some(tag)) => run_checks(&root, Some(&tag)),
-        Err(message) => {
-            eprintln!("{message}");
-            2
-        }
-    };
-    std::process::exit(exit_code);
+#[derive(Parser)]
+#[command(
+    name = "xtask",
+    version,
+    about = "Owner-lane repository automation",
+    subcommand_required = true,
+    arg_required_else_help = true
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
 }
 
-/// What the caller asked for: the repository checks, optionally against the version a tag names.
-///
-/// `--tag` exists because a release must prove the tagged tree already says what the tag says
-/// (`REL-30`). The tag never edits the tree; it only gets compared to it.
-fn invocation(arguments: &[String]) -> Result<Option<String>, String> {
-    if arguments.first().map(String::as_str) != Some("check") {
-        return Err(USAGE.to_owned());
-    }
-    let mut tag = None;
-    let mut rest = arguments[1..].iter();
-    while let Some(argument) = rest.next() {
-        match argument.as_str() {
-            "--tag" => {
-                let value = rest
-                    .next()
-                    .ok_or_else(|| format!("--tag needs a tag value\n{USAGE}"))?;
-                tag = Some(value.clone());
-            }
-            other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
-        }
-    }
-    Ok(tag)
+#[derive(Subcommand)]
+enum Command {
+    /// Check the repository contract: files, versions, packaging, action pins, workspace layout
+    Check {
+        /// Also prove the tree already carries this release tag's version
+        #[arg(long, value_name = "TAG")]
+        tag: Option<String>,
+    },
+}
+
+fn main() {
+    let root = repository_root();
+    let exit_code = match Cli::parse().command {
+        // `--tag` exists because a release must prove the tagged tree already says what the tag
+        // says (`REL-30`). The tag never edits the tree; it only gets compared to it.
+        Command::Check { tag } => run_checks(&root, tag.as_deref()),
+    };
+    std::process::exit(exit_code);
 }
 
 /// The version a tag promises, refusing anything that is not a `vX.Y.Z[-suffix]` release tag.
@@ -75,7 +78,7 @@ fn tag_version(tag: &str) -> Result<&str, String> {
                 .all(|c| c.is_ascii_alphanumeric() || c == '.')
     });
     if !core_is_semver || !suffix_is_sane {
-        return Err(format!("`{tag}` is not a release tag\n{USAGE}"));
+        return Err(format!("`{tag}` is not a release tag"));
     }
     Ok(version)
 }
@@ -94,6 +97,7 @@ fn run_checks(root: &Path, tag: Option<&str>) -> i32 {
     let mut findings: Vec<String> = Vec::new();
 
     required_files(root, &mut findings);
+    workspace_contract(root, &mut findings);
     let versions = versions_agree(root, &mut findings);
     packaging_agrees(root, &mut findings);
     action_refs_are_immutable(root, &mut findings);
@@ -125,8 +129,8 @@ fn run_checks(root: &Path, tag: Option<&str>) -> i32 {
     1
 }
 
-/// The workspace contract. `crates/xtask/scripts/verify-workspace.ts` asserts the JS half; this asserts the
-/// files a release depends on existing at all.
+/// The files a release depends on existing at all. The workspace half of the contract lives in
+/// [`workspace_contract`].
 fn required_files(root: &Path, findings: &mut Vec<String>) {
     const REQUIRED: &[&str] = &[
         "Cargo.toml",
@@ -147,6 +151,55 @@ fn required_files(root: &Path, findings: &mut Vec<String>) {
             findings.push(format!("missing required file: {relative}"));
         }
     }
+}
+
+/// The Bun/Turbo half of the contract, ported from `crates/xtask/scripts/verify-workspace.ts`.
+///
+/// Turbo reaches the Cargo workspace through exactly one npm facade (`crates/package.json`), so the
+/// root package must declare it as a workspace and `crates/xtask` must *not* carry a facade of its
+/// own — a second one would be a second command path for the same `cargo --workspace`
+/// (`decision-1`). The crate is a Cargo member, which is how its tests and this check are run.
+fn workspace_contract(root: &Path, findings: &mut Vec<String>) {
+    match fs::read_to_string(root.join("package.json"))
+        .ok()
+        .as_deref()
+        .and_then(|text| json_string_array(text, "workspaces"))
+    {
+        Some(workspaces) if workspaces.iter().any(|entry| entry == "crates") => {}
+        Some(workspaces) => findings.push(format!(
+            "package.json: `workspaces` must declare \"crates\", found {workspaces:?}"
+        )),
+        None => findings.push("package.json: no `workspaces` array to read".to_owned()),
+    }
+
+    let cargo = fs::read_to_string(root.join("Cargo.toml")).unwrap_or_default();
+    if !cargo.contains("\"crates/xtask\"") {
+        findings.push("Cargo.toml: `crates/xtask` is not a workspace member".to_owned());
+    }
+
+    if root.join("crates/xtask/package.json").exists() {
+        findings.push(
+            "crates/xtask/package.json: xtask must carry no npm facade — `crates/package.json` \
+             already drives `cargo --workspace` (decision-1)"
+                .to_owned(),
+        );
+    }
+}
+
+/// Reads a top-level `"key": ["a", "b"]` array of strings from JSON.
+///
+/// Deliberately naive: it reads our own `package.json`, whose shape is reviewed, and it returns
+/// `None` rather than guesses when the value is not a string array.
+fn json_string_array(text: &str, key: &str) -> Option<Vec<String>> {
+    let start = text.find(&format!("\"{key}\""))?;
+    let rest = text[start..].split_once('[')?.1;
+    let body = rest.split_once(']')?.0;
+    let values: Vec<String> = body
+        .split(',')
+        .map(|value| value.trim().trim_matches('"').to_owned())
+        .filter(|value| !value.is_empty())
+        .collect();
+    Some(values)
 }
 
 /// Every manifest carrying a version literal must agree. This is the invariant that
@@ -593,20 +646,104 @@ mod tests {
     }
 
     #[test]
-    fn the_check_grammar_takes_an_optional_tag() {
-        let args = |items: &[&str]| {
-            items
-                .iter()
-                .map(|item| (*item).to_owned())
-                .collect::<Vec<_>>()
-        };
-        assert_eq!(invocation(&args(&["check"])), Ok(None));
-        assert_eq!(
-            invocation(&args(&["check", "--tag", "v0.1.0"])),
-            Ok(Some("v0.1.0".to_owned()))
+    fn clap_owns_the_check_grammar() {
+        use clap::Parser as _;
+
+        let cli = Cli::try_parse_from(["xtask", "check"]).expect("check takes no arguments");
+        assert!(matches!(cli.command, Command::Check { tag: None }));
+
+        let cli = Cli::try_parse_from(["xtask", "check", "--tag", "v0.1.0"]).expect("--tag");
+        assert!(matches!(cli.command, Command::Check { tag: Some(ref tag) } if tag == "v0.1.0"));
+
+        assert!(Cli::try_parse_from(["xtask"]).is_err(), "a verb is required");
+        assert!(
+            Cli::try_parse_from(["xtask", "release"]).is_err(),
+            "there is no release verb: xtask ships repository checks only"
         );
-        assert!(invocation(&args(&["check", "--tag"])).is_err());
-        assert!(invocation(&args(&["check", "--version", "1"])).is_err());
-        assert!(invocation(&args(&["release"])).is_err());
+        assert!(Cli::try_parse_from(["xtask", "check", "--tag"]).is_err());
+        assert!(Cli::try_parse_from(["xtask", "check", "--bogus"]).is_err());
+    }
+
+    /// The root package makes the Cargo workspace visible to Turbo.
+    #[test]
+    fn the_root_package_declares_the_cargo_workspace() {
+        let root = repository_root();
+        let package = fs::read_to_string(root.join("package.json")).expect("package.json");
+        assert_eq!(
+            json_string_array(&package, "workspaces").as_deref(),
+            Some(["crates".to_owned()].as_slice())
+        );
+        assert_eq!(
+            json_string_array(&package, "scripts"),
+            None,
+            "scripts is an object, not an array: the reader must refuse rather than guess"
+        );
+    }
+
+    /// The Bun lockfile agrees with the workspace layout, and no docs workspace sneaks in.
+    #[test]
+    fn the_bun_lockfile_agrees_with_the_workspace_layout() {
+        let root = repository_root();
+        let lock = fs::read_to_string(root.join("bun.lock")).expect("bun.lock");
+        let package = fs::read_to_string(root.join("package.json")).expect("package.json");
+        for workspace in json_string_array(&package, "workspaces").expect("a workspaces array") {
+            assert!(
+                lock.contains(&format!("\"{workspace}\": {{")),
+                "bun.lock does not know the `{workspace}` workspace"
+            );
+        }
+        assert!(
+            !lock.contains("workspace:docs"),
+            "Turbo must not gain a docs workspace: docs ship through the site, not the gate"
+        );
+    }
+
+    /// `xtask` is a Cargo member and carries no npm facade of its own.
+    #[test]
+    fn xtask_is_a_cargo_member_without_a_facade() {
+        let root = repository_root();
+        let cargo = fs::read_to_string(root.join("Cargo.toml")).expect("Cargo.toml");
+        assert!(cargo.contains("\"crates/xtask\""));
+        assert!(
+            !root.join("crates/xtask/package.json").exists(),
+            "a second facade would be a second command path (decision-1)"
+        );
+    }
+
+    /// The contract check is silent on a repository that satisfies it, and names each fault on one
+    /// that does not — otherwise the check would pass by saying nothing.
+    #[test]
+    fn the_workspace_contract_names_what_is_missing() {
+        let good = tempfile::tempdir().expect("temp dir");
+        fs::write(
+            good.path().join("package.json"),
+            "{\n  \"workspaces\": [\"crates\"]\n}\n",
+        )
+        .expect("package.json");
+        fs::write(
+            good.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"crates/xtask\"]\n",
+        )
+        .expect("Cargo.toml");
+        let mut findings = Vec::new();
+        workspace_contract(good.path(), &mut findings);
+        assert!(findings.is_empty(), "{findings:#?}");
+
+        let bad = tempfile::tempdir().expect("temp dir");
+        fs::write(
+            bad.path().join("package.json"),
+            "{\n  \"workspaces\": [\"apps\"]\n}\n",
+        )
+        .expect("package.json");
+        fs::write(bad.path().join("Cargo.toml"), "[workspace]\nmembers = []\n")
+            .expect("Cargo.toml");
+        fs::create_dir_all(bad.path().join("crates/xtask")).expect("crates/xtask");
+        fs::write(bad.path().join("crates/xtask/package.json"), "{}").expect("facade");
+        workspace_contract(bad.path(), &mut findings);
+
+        assert_eq!(findings.len(), 3, "{findings:#?}");
+        assert!(findings.iter().any(|finding| finding.contains("workspaces")));
+        assert!(findings.iter().any(|finding| finding.contains("workspace member")));
+        assert!(findings.iter().any(|finding| finding.contains("npm facade")));
     }
 }

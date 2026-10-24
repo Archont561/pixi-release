@@ -16,7 +16,7 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const USAGE: &str = "xtask <check>";
+const USAGE: &str = "xtask <check> [--tag <tag>]";
 
 /// Reads a version literal out of one manifest dialect.
 type VersionReader = fn(&str) -> Option<String>;
@@ -24,13 +24,60 @@ type VersionReader = fn(&str) -> Option<String>;
 fn main() {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     let root = repository_root();
-    let exit_code = if arguments.first().map(String::as_str) == Some("check") {
-        run_checks(&root)
-    } else {
-        eprintln!("{USAGE}");
-        2
+    let exit_code = match invocation(&arguments) {
+        Ok(None) => run_checks(&root, None),
+        Ok(Some(tag)) => run_checks(&root, Some(&tag)),
+        Err(message) => {
+            eprintln!("{message}");
+            2
+        }
     };
     std::process::exit(exit_code);
+}
+
+/// What the caller asked for: the repository checks, optionally against the version a tag names.
+///
+/// `--tag` exists because a release must prove the tagged tree already says what the tag says
+/// (`REL-30`). The tag never edits the tree; it only gets compared to it.
+fn invocation(arguments: &[String]) -> Result<Option<String>, String> {
+    if arguments.first().map(String::as_str) != Some("check") {
+        return Err(USAGE.to_owned());
+    }
+    let mut tag = None;
+    let mut rest = arguments[1..].iter();
+    while let Some(argument) = rest.next() {
+        match argument.as_str() {
+            "--tag" => {
+                let value = rest
+                    .next()
+                    .ok_or_else(|| format!("--tag needs a tag value\n{USAGE}"))?;
+                tag = Some(value.clone());
+            }
+            other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
+        }
+    }
+    Ok(tag)
+}
+
+/// The version a tag promises, refusing anything that is not a `vX.Y.Z[-suffix]` release tag.
+fn tag_version(tag: &str) -> Result<&str, String> {
+    let version = tag.strip_prefix('v').unwrap_or(tag);
+    let (core, suffix) = match version.split_once('-') {
+        Some((core, suffix)) => (core, Some(suffix)),
+        None => (version, None),
+    };
+    let numeric = |part: &str| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit());
+    let core_is_semver = core.split('.').count() == 3 && core.split('.').all(&numeric);
+    let suffix_is_sane = suffix.is_none_or(|suffix| {
+        !suffix.is_empty()
+            && suffix
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '.')
+    });
+    if !core_is_semver || !suffix_is_sane {
+        return Err(format!("`{tag}` is not a release tag\n{USAGE}"));
+    }
+    Ok(version)
 }
 
 /// `CARGO_MANIFEST_DIR` is `<root>/crates/xtask`, so the root is two levels up. This avoids
@@ -43,16 +90,32 @@ fn repository_root() -> PathBuf {
         .to_path_buf()
 }
 
-fn run_checks(root: &Path) -> i32 {
+fn run_checks(root: &Path, tag: Option<&str>) -> i32 {
     let mut findings: Vec<String> = Vec::new();
 
     required_files(root, &mut findings);
-    versions_agree(root, &mut findings);
+    let versions = versions_agree(root, &mut findings);
     packaging_agrees(root, &mut findings);
     action_refs_are_immutable(root, &mut findings);
+    if let Some(tag) = tag {
+        match tag_version(tag) {
+            Ok(version) => {
+                tag_describes_tree(root, tag, version, &versions, &mut findings);
+            }
+            Err(message) => {
+                eprintln!("::error::{message}");
+                return 2;
+            }
+        }
+    }
 
     if findings.is_empty() {
-        println!("xtask check: repository checks passed");
+        println!(
+            "xtask check: repository checks passed{}",
+            tag.map_or_else(String::new, |tag| format!(
+                " (tag {tag} describes the tree)"
+            ))
+        );
         return 0;
     }
     for finding in &findings {
@@ -89,8 +152,8 @@ fn required_files(root: &Path, findings: &mut Vec<String>) {
 /// Every manifest carrying a version literal must agree. This is the invariant that
 /// the authored policy will own once `prepare` exists (doc-3 §4); until then it is checked, so
 /// the manifests cannot drift before the product can enforce it.
-fn versions_agree(root: &Path, findings: &mut Vec<String>) {
-    let sources: [(&str, VersionReader); 3] = [
+fn versions_agree(root: &Path, findings: &mut Vec<String>) -> Vec<(&'static str, String)> {
+    let sources: [(&'static str, VersionReader); 3] = [
         ("Cargo.toml", workspace_package_version),
         ("pixi.toml", toml_top_level_version),
         ("package.json", json_version),
@@ -108,7 +171,7 @@ fn versions_agree(root: &Path, findings: &mut Vec<String>) {
     }
 
     let Some((_, first)) = seen.first() else {
-        return;
+        return seen;
     };
     if seen.iter().any(|(_, version)| version != first) {
         let mut detail = String::new();
@@ -116,6 +179,38 @@ fn versions_agree(root: &Path, findings: &mut Vec<String>) {
             let _ = write!(detail, " {relative}={version}");
         }
         findings.push(format!("manifest versions disagree:{detail}"));
+    }
+    seen
+}
+
+/// Every literal the tree carries must already be the version the tag names.
+///
+/// The tag is the evidence anchor (`decision-4`), so a publish job may only consume a tree it
+/// describes. Rewriting the manifests after the tag exists — what the release lane used to do —
+/// builds an artifact from a tree no tag names, which is the skew `REL-30` removed. Each finding
+/// names the path and the remedy, because the operator's two options are different actions.
+fn tag_describes_tree(
+    root: &Path,
+    tag: &str,
+    version: &str,
+    versions: &[(&str, String)],
+    findings: &mut Vec<String>,
+) {
+    let mut described: Vec<(&str, String)> = versions.to_vec();
+    let recipe = "crates/pixi-release/recipe/recipe.yaml";
+    if let Ok(text) = fs::read_to_string(root.join(recipe))
+        && let Some(found) = yaml_scalar(&text, "context", "version")
+    {
+        described.push((recipe, found));
+    }
+    for (relative, found) in described {
+        if found != version {
+            findings.push(format!(
+                "{relative}: carries {found}, but tag {tag} names {version} — the tag describes the \
+                 tree, it never rewrites it; cut the release with pixi-release so the commit and \
+                 the tag agree, or delete the tag and re-cut it"
+            ));
+        }
     }
 }
 
@@ -433,5 +528,85 @@ mod tests {
         packaging_agrees(&root, &mut findings);
         action_refs_are_immutable(&root, &mut findings);
         assert!(findings.is_empty(), "{findings:#?}");
+    }
+
+    /// The tag a release was cut for names the version this tree already carries, so the check the
+    /// release lane runs before building passes without editing anything (`REL-30` AC#3).
+    #[test]
+    fn the_repository_agrees_with_its_own_release_tag() {
+        let root = repository_root();
+        let mut findings = Vec::new();
+        let versions = versions_agree(&root, &mut findings);
+        let version = versions
+            .first()
+            .map(|(_, version)| version.clone())
+            .expect("the repository declares a version");
+        let tag = format!("v{version}");
+        tag_describes_tree(&root, &tag, &version, &versions, &mut findings);
+        assert!(findings.is_empty(), "{findings:#?}");
+    }
+
+    /// The negative case that had never fired: a tag naming another version is refused, and the
+    /// finding names the path carrying the disagreement rather than only the tag (`REL-30` AC#4).
+    #[test]
+    fn a_tag_that_names_another_version_is_refused_naming_the_path() {
+        let root = repository_root();
+        let mut findings = Vec::new();
+        let versions = versions_agree(&root, &mut findings);
+        tag_describes_tree(&root, "v9.9.9", "9.9.9", &versions, &mut findings);
+
+        assert_eq!(
+            findings.len(),
+            versions.len()
+                + usize::from(
+                    fs::read_to_string(root.join("crates/pixi-release/recipe/recipe.yaml")).is_ok()
+                ),
+            "every literal is reported once: {findings:#?}"
+        );
+        for (relative, carried) in &versions {
+            let finding = findings
+                .iter()
+                .find(|finding| finding.starts_with(&format!("{relative}: carries {carried}")))
+                .unwrap_or_else(|| panic!("{relative} is not named: {findings:#?}"));
+            assert!(
+                finding.contains("9.9.9") && finding.contains("cut the release"),
+                "the finding names the tag and the remedy: {finding}"
+            );
+        }
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.starts_with("crates/pixi-release/recipe/recipe.yaml:")),
+            "the recipe is a place the version is written too: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn only_a_release_tag_can_be_checked_against_the_tree() {
+        assert_eq!(tag_version("v1.2.3"), Ok("1.2.3"));
+        assert_eq!(tag_version("v1.2.3-rc.1"), Ok("1.2.3-rc.1"));
+        assert_eq!(tag_version("1.2.3"), Ok("1.2.3"));
+        assert!(tag_version("milestone/sprint-1").is_err());
+        assert!(tag_version("v1.2").is_err());
+        assert!(tag_version("v1.2.3-").is_err());
+        assert!(tag_version("vnext").is_err());
+    }
+
+    #[test]
+    fn the_check_grammar_takes_an_optional_tag() {
+        let args = |items: &[&str]| {
+            items
+                .iter()
+                .map(|item| (*item).to_owned())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(invocation(&args(&["check"])), Ok(None));
+        assert_eq!(
+            invocation(&args(&["check", "--tag", "v0.1.0"])),
+            Ok(Some("v0.1.0".to_owned()))
+        );
+        assert!(invocation(&args(&["check", "--tag"])).is_err());
+        assert!(invocation(&args(&["check", "--version", "1"])).is_err());
+        assert!(invocation(&args(&["release"])).is_err());
     }
 }

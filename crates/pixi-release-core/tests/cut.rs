@@ -115,6 +115,29 @@ fn a_dirty_tree_is_refused() {
     assert_eq!(refusal(&git, &plan(), &policy, &green()), "worktree");
 }
 
+/// AC#1, DoD#2: a change the plan never recorded refuses the commit, names the path, and says what
+/// the operator can do about it.
+#[rstest]
+fn a_change_outside_the_recorded_set_is_refused_by_path_and_remedy() {
+    let policy = ReleasePolicy::parse(POLICY).expect("policy");
+    let mut git = git();
+    git.set_dirty_paths([
+        "CHANGELOG.md".to_owned(),
+        "Cargo.toml".to_owned(),
+        "notes.md".to_owned(),
+    ]);
+
+    let error = permit(&git, &policy, &plan(), DIGEST, &green()).expect_err("an unrecorded change");
+
+    assert_eq!(error.key(), "worktree");
+    assert!(error.detail().contains("notes.md"), "{}", error.detail());
+    assert!(
+        error.detail().contains("run prepare") && error.detail().contains("revert"),
+        "{}",
+        error.detail()
+    );
+}
+
 /// AC#2: a tree with nothing left to stage is refused — `cut` is not a no-op.
 #[rstest]
 fn a_tree_with_nothing_to_stage_is_refused() {

@@ -12,6 +12,11 @@ milestone, **m-2** (M2 — Verify, publish, resume, and self-host), and closes t
 m-2 depends on. It lives here because the Backlog CLI cannot edit a milestone description (`doc-9`),
 so sprint scope has no other home.
 
+> **Sequencing, 2026-10-24.** `doc-11` supersedes the *order* in §5 of this document: the version
+> write set and the tag order (`REL-29`, `REL-30`) come before the schema change (`REL-11`) and before
+> the renderer (`REL-5`). This document stays authoritative for Sprint 1's *scope*; `doc-11` governs
+> when each piece lands.
+
 A sprint is **not** a second delivery authority. Every row below is an existing Backlog task with
 its own criteria; this document only decides what is in the sprint, in what order, and what "done"
 means at the end.

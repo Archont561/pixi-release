@@ -4,7 +4,7 @@ title: Run the owner-lane release train
 status: In Progress
 assignee: []
 created_date: '2026-10-24 15:57'
-updated_date: '2026-10-24 17:50'
+updated_date: '2026-10-24 18:12'
 labels:
   - release
   - ci
@@ -74,4 +74,6 @@ Byte identity is the run's own chain, not an assumption: both files came from 40
 AC#4 is checked on that evidence. AC#5 stays open: this run exercised the last job, not the lane end to end. AC#2 stays open: no run has yet stamped a version that differs from the manifests.
 
 Side evidence, same day: a `workflow_dispatch` of `autorelease` naming the existing version (40117631616) finished in 38s having pushed nothing — the `skip` branch, "a version is never re-released (decision-7)" — which is the first observation of that guard on the dispatch path.
+
+Sequenced, 2026-10-24 — AC#2 now has an owner. The deficiency recorded above (the stamp step was a no-op on v0.1.0, and the filename guard never saw a negative case) cannot be fixed inside the release lane without changing where the version is written: a publish job must consume a tree that already agrees with its tag. REL-30 moves the write into prepare, stages exactly the reported set in commit, and tags the commit it just made, then deletes the stamp step from release.yml. AC#2 is expected to close against a run of that shape, not against another repair. Ordering: doc-11.
 <!-- SECTION:NOTES:END -->

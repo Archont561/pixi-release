@@ -4,13 +4,20 @@ title: Define the release manifest schema
 status: To Do
 assignee: []
 created_date: '2026-10-20 19:12'
-updated_date: '2026-10-23 15:20'
+updated_date: '2026-10-24 18:12'
 labels:
   - architecture
 milestone: m-2
 dependencies:
   - REL-4
-priority: medium
+documentation:
+  - >-
+    backlog/decisions/decision-16 -
+    Version-checking-is-driven-by-an-explicit-format-and-scheme-not-by-guessing.md
+  - >-
+    backlog/docs/plan/doc-11 -
+    Development-plan-version-truth-evidence-then-surface.md
+priority: high
 ordinal: 11000
 ---
 

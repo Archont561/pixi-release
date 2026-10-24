@@ -4,7 +4,7 @@ title: Run the owner-lane release train
 status: In Progress
 assignee: []
 created_date: '2026-10-24 15:57'
-updated_date: '2026-10-24 17:17'
+updated_date: '2026-10-24 17:32'
 labels:
   - release
   - ci
@@ -56,4 +56,12 @@ Measured, 2026-10-24 — the release was cut, and the lane ran end to end except
 **The failure.** `github release` failed in 6s: `failed to run git: fatal: not a git repository (or any of the parent directories): .git`. That job has no checkout — it only downloads artifacts — so `gh release create` had no repository to resolve. Fixed by passing `--repo "${GITHUB_REPOSITORY}"`. AC#4 stays open until a GitHub Release exists with the artifact and SHA256SUMS, and AC#5 stays open until the lane completes in one run.
 
 **Still not exercised by this run:** the version stamp was a no-op (the manifests already said 0.1.0, which is what the tag says), and the filename-mismatch guard had no negative case. AC#2 stays open until a run stamps a version that differs from the manifests.
+
+Repair path, 2026-10-24 — the last job can now be finished without rebuilding.
+
+`release.yml` gained a `workflow_dispatch` input `existing_run_id`. When it is set, `build` is skipped (`if: inputs.existing_run_id == ''`), `prefix` follows it into skipped, and `github-release` runs from `always()` on either shape: the two downloads become `gh run download <id> --repo … -n conda-dist -D output` and `-n release-meta`, a new "Resolve the release identity" step derives tag/version/prerelease from `tag` (blank tag or a non-release tag is an `::error::` + exit 1), a new guard refuses a run that holds no `pixi-release-<version>` artifact, and "Verify the checksums match the artifact" runs `sha256sum --check SHA256SUMS` before anything is published. The publish step keeps `--repo … --verify-tag` from the fix merged as a04f2ff (PR #43, gates 40115490809).
+
+Why not just re-run: a re-run replays the workflow file from the run's own ref, so 40115209793 would re-read the broken job at v0.1.0. Why not a plain dispatch: that rebuilds, and a conda package is not byte-reproducible (timestamps), so tag v0.1.0 would carry two different binaries (decision-7).
+
+Verified locally against the environment the steps would see: the identity script yields tag_name/version/prerelease for normal, prerelease, repair and repair-prerelease, and exits 1 for a blank tag and for `milestone-sprint-1`; the fetch guard accepts `pixi-release-0.1.0-h41f06ac_0.conda` and rejects `pixi-release-0.0.9-…` when VERSION is 0.1.0. Not yet exercised by a real run — `gh workflow run` is 403 for this token, so the first repair run is the owner's to start.
 <!-- SECTION:NOTES:END -->

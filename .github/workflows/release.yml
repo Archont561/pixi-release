@@ -13,6 +13,11 @@ name: release
 #
 # Prerelease tags (`vX.Y.Z-suffix`) build, prove and dry-run the registry but upload nothing, so
 # version space is only spent by a clean release.
+#
+# `existing_run_id` is the repair path for a lane that died after its artifact was already built and
+# registered — a GitHub Release that failed to attach, for instance. It skips `build` and `prefix`
+# and finishes the release from the artifacts that run left behind, so no second binary is ever
+# built for one tag (decision-7: one version, one tag, one artifact).
 
 on:
   push:
@@ -24,6 +29,13 @@ on:
     inputs:
       tag:
         description: Release tag to build and publish (for example v0.1.0). Blank uses the ref.
+        required: false
+        default: ""
+        type: string
+      existing_run_id:
+        description: >-
+          Repair only — publish the GitHub Release for `tag` from this run's artifacts instead of
+          building and registering again. Leave blank for a normal release.
         required: false
         default: ""
         type: string
@@ -39,6 +51,10 @@ concurrency:
 jobs:
   build:
     name: build
+    # A repair run publishes a release that was already built and registered, so building again
+    # would put a second binary for one tag into the world (decision-7). `prefix` follows this job
+    # into skipped for the same reason.
+    if: inputs.existing_run_id == ''
     runs-on: ubuntu-latest
     timeout-minutes: 60
     outputs:
@@ -216,25 +232,102 @@ jobs:
   github-release:
     name: github release
     needs: [build, prefix]
+    # Either the lane just built and registered this release, or it is being repaired from the run
+    # that did — in which case `build` and `prefix` are `skipped`, which is not a failure here.
     if: >-
       always() &&
-      needs.build.result == 'success' &&
-      (needs.prefix.result == 'success' || needs.prefix.result == 'skipped')
+      (
+        inputs.existing_run_id != '' ||
+        (
+          needs.build.result == 'success' &&
+          (needs.prefix.result == 'success' || needs.prefix.result == 'skipped')
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
+      # `gh run download` in repair mode reads another run's artifacts.
+      actions: read
     steps:
+      # One place resolves what is being released, so the publish step below is the same in both
+      # modes and never has to spell out which job the tag came from.
+      - name: Resolve the release identity
+        id: identity
+        shell: bash
+        env:
+          REPAIR_RUN_ID: ${{ inputs.existing_run_id }}
+          INPUT_TAG: ${{ inputs.tag }}
+          BUILT_TAG: ${{ needs.build.outputs.tag_name }}
+          BUILT_PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          tag="${BUILT_TAG}"
+          prerelease="${BUILT_PRERELEASE}"
+          if [ -n "${REPAIR_RUN_ID}" ]; then
+            tag="${INPUT_TAG}"
+            if [ -z "${tag}" ]; then
+              echo "::error::a repair run must name the tag it is releasing (tag=v0.1.0)"
+              exit 1
+            fi
+            version="${tag#v}"
+            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              echo "::error::'${tag}' is not a release tag"
+              exit 1
+            fi
+            prerelease=false
+            [[ "$version" == *-* ]] && prerelease=true
+            echo "repairing ${tag} from run ${REPAIR_RUN_ID}"
+          fi
+          {
+            echo "tag_name=${tag}"
+            echo "version=${tag#v}"
+            echo "prerelease=${prerelease}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Download the conda artifact
+        if: inputs.existing_run_id == ''
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: conda-dist
           path: output
 
       - name: Download the release metadata
+        if: inputs.existing_run_id == ''
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-meta
+
+      # Repair mode takes the bytes from the run that published them rather than from a fresh build:
+      # those are the bytes the registry holds, and the only ones this tag may carry.
+      - name: Fetch the artifacts the failed run left behind
+        if: inputs.existing_run_id != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ inputs.existing_run_id }}
+          VERSION: ${{ steps.identity.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh run download "${RUN_ID}" --repo "${REPOSITORY}" --name conda-dist --dir output
+          gh run download "${RUN_ID}" --repo "${REPOSITORY}" --name release-meta
+          # The same guard the build job applies, because a repair run is exactly where the wrong
+          # artifact could be attached to the wrong tag.
+          shopt -s nullglob
+          artifacts=(output/linux-64/pixi-release-"${VERSION}"-*.conda)
+          if [ ${#artifacts[@]} -eq 0 ]; then
+            echo "::error::run ${RUN_ID} holds no pixi-release-${VERSION} artifact; refusing to release it as ${VERSION}"
+            find output -maxdepth 3 -type f || true
+            exit 1
+          fi
+          printf '%s\n' "${artifacts[@]}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify the checksums match the artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum --check SHA256SUMS
 
       # The bytes published here are the bytes the registry received: same artifact job, same
       # checksums, so a consumer can verify one against the other.
@@ -246,8 +339,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.build.outputs.tag_name }}
-          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          TAG: ${{ steps.identity.outputs.tag_name }}
+          PRERELEASE: ${{ steps.identity.outputs.prerelease }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail

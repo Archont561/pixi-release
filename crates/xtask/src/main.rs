@@ -655,7 +655,10 @@ mod tests {
         let cli = Cli::try_parse_from(["xtask", "check", "--tag", "v0.1.0"]).expect("--tag");
         assert!(matches!(cli.command, Command::Check { tag: Some(ref tag) } if tag == "v0.1.0"));
 
-        assert!(Cli::try_parse_from(["xtask"]).is_err(), "a verb is required");
+        assert!(
+            Cli::try_parse_from(["xtask"]).is_err(),
+            "a verb is required"
+        );
         assert!(
             Cli::try_parse_from(["xtask", "release"]).is_err(),
             "there is no release verb: xtask ships repository checks only"
@@ -742,8 +745,20 @@ mod tests {
         workspace_contract(bad.path(), &mut findings);
 
         assert_eq!(findings.len(), 3, "{findings:#?}");
-        assert!(findings.iter().any(|finding| finding.contains("workspaces")));
-        assert!(findings.iter().any(|finding| finding.contains("workspace member")));
-        assert!(findings.iter().any(|finding| finding.contains("npm facade")));
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.contains("workspaces"))
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.contains("workspace member"))
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.contains("npm facade"))
+        );
     }
 }

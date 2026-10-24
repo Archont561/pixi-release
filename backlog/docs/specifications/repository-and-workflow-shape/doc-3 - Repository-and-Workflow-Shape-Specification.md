@@ -3,6 +3,7 @@ id: doc-3
 title: Repository and Workflow Shape Specification
 type: specification
 created_date: '2026-10-04 12:32'
+updated_date: '2026-10-24 15:58'
 ---
 ## Purpose
 
@@ -196,8 +197,8 @@ only through its own generated output cannot detect that its generator is broken
 | `relock.yml` | consumer-generated, by `pixi-sandbox` | adopt as-is | do not re-invent; it is byte-identical across 3 peers |
 | `publish-sandbox.yml` | consumer-generated, by `pixi-sandbox` | adopt as-is | add `.pixi-sandbox.toml` |
 | `docs.yml` | owner | removed 2026-10-20 (no `apps/docs/`) | — |
-| `auto-release.yml` | owner → product | **the target** | `plan → prepare → cut`; one job, no inline bash |
-| `release.yml` | owner → product | **the target** | `verify → build → publish`; 5-platform matrix |
+| `auto-release.yml` | owner → product | shipped as `autorelease.yml`, owner-lane bootstrap (`decision-14`, REL-27) | `plan → prepare → cut`; one job, no inline bash. The file name differs from the target because the train predates the renderer |
+| `release.yml` | owner → product | shipped, owner-lane bootstrap (`decision-14`, REL-27) | `verify → build → publish`, OIDC to the project channel; one platform until a build matrix exists |
 | `consumer-proof.yml` | owner | before v1 | render into a clean fixture from the *published* release and run it |
 | `workflow-drift.yml` | owner | with REL-5 | scheduled `workflow check`; opens a PR on drift |
 

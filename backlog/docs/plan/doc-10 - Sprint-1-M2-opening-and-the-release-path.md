@@ -3,7 +3,7 @@ id: doc-10
 title: Sprint 1 - M2 opening and the release path
 type: guide
 created_date: '2026-10-24 15:37'
-updated_date: '2026-10-24 15:37'
+updated_date: '2026-10-24 15:58'
 ---
 ## Status
 
@@ -87,41 +87,27 @@ refusal key from `cut` stopped it. A refused cut is a result, not a failure.
 
 ## 5. The release path, and what it still needs
 
-The intended flow — *one sprint produces a version, a pull request, a merge, and a release that
-runs* — is five links. Four exist or are in scope; one does not.
+Updated 2026-10-24: the missing link is now present. `decision-14` and REL-27 add the owner-lane
+train, so option **B** from the first version of this plan was taken — the lane was built rather
+than deferred, and the milestone-tag question was answered as a *dispatch trigger* rather than as a
+second evidence anchor.
 
 | Link | Status on 2026-10-24 |
 |---|---|
 | Version | ✅ `plan` derives it through Convco (`decision-6`); `plan --version` overrides it explicitly |
 | Merge | ✅ normal merge commit, `gh pr merge --merge` |
-| Tag | ✅ `cut` writes the annotated tag after the merge (`decision-4`); it is the evidence anchor |
-| Release workflow | ❌ **absent.** `.github/workflows/` holds `ci.yml`, `publish-sandbox.yml` and `relock.yml` only. The release lane is rendered by REL-5 and drift-gated by REL-12; the self-release is REL-7 |
-| Publish | ❌ REL-6. Nothing can be published, and `decision-9` keeps registry targets behind it |
+| Tag | ✅ `autorelease.yml` writes the annotated `v*` tag (bootstrap, `decision-14` §3); `cut` takes it over in REL-7 |
+| Trigger | ✅ `autorelease.yml` listens to `main` pushes and to `milestone-v*` / `milestone/*` / `m-v*` tags (`decision-14` §4), and dispatches `release.yml` because a `GITHUB_TOKEN` push starts nothing (`doc-3` §2.3 rule 1) |
+| Release workflow | ✅ `release.yml` builds the conda artifact from the tagged source and proves it before publishing |
+| Publish | ✅ channel `archont561/archont561` through the `prefix` OIDC binding; a GitHub Release carries the same bytes plus `SHA256SUMS` |
 
-The missing link is not the tag, it is the **trigger**. A milestone tag that starts a release is a
-new rule, and two accepted decisions stand in its way:
+What is still missing, named rather than implied:
 
-- `decision-4` makes the annotated tag the evidence anchor, written by `cut`, not by a merge.
-- `decision-7` fixes one version and one tag per repository for v1.
-
-REL-16 owns exactly this question — milestone tags classified as a release trigger or as a quality
-gate — and its criterion 5 forbids implementation under that task. It sits in m-3, which is
-post-v1. So there are two honest ways to end Sprint 1:
-
-**A. End at the tag (no new decision).** `cut --push` publishes `v0.2.0` as the evidence anchor; the
-milestone is recorded *inside* that tag's body rather than as a second tag. The release lane, when
-REL-5 and REL-7 land, runs from the tag `cut` already writes. Nothing contradicts `decision-4` or
-`decision-7`.
-
-**B. Pull REL-16 forward and answer it first.** A `milestone-*` tag becomes a trigger, which needs a
-decision that supersedes or amends `decision-7`, and an owner-lane release workflow that exists to
-be triggered. This is the only route to "merge a milestone tag and watch a release run" during
-Sprint 1, and it spends sprint capacity on a decision plus a workflow that REL-5 and REL-7 would
-otherwise produce.
-
-**Recommendation: A.** It keeps the sprint's exit condition reachable and defers the trigger
-question to the task that was created for it. B is legitimate, but it is a scope change to m-3 work
-and it should be an explicit choice, not an assumption buried in a plan.
+- **Platform breadth.** One platform (`linux-64`) until a build matrix exists (`decision-14` §8).
+- **Self-release by a pinned controller.** REL-7 replaces the bootstrap tag step; until then the
+  train tags with Convco and `git`, and the tag body is the changelog rather than `cut`'s trailers.
+- **Artifact verification and resumable publish** (REL-6) and the rendered consumer shapes
+  (REL-5, REL-12). The owner-lane files are not their output (`doc-3` §2.1).
 
 ## 6. Stop conditions
 

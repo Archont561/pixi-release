@@ -49,6 +49,8 @@ pixi run package     # build the conda artifact into output/
 | Immutable release plans | `plan` derives canonical JSON from the policy and two Git facts | `pixi-release-core`, `doc-1` |
 | Git safety for prepare and cut | `prepare --dry-run` records edits without writing; `cut` validates and never publishes | `pixi-release-git`, `decision-4` |
 | Consumer release workflows | Golden template in place; rendering planned. Generated files are never hand-edited | `crates/xtask/templates/workflows/`, `doc-2`, `decision-3` |
+| Release train | `autorelease` derives the version from Convco and tags; `release` builds the conda
+artifact and publishes it to the project channel through OIDC | `.github/workflows/`, `decision-14` |
 | Artifact verification and resumable publish | Planned | `doc-2` §3, `doc-3` §2.6 |
 | Repository gates | Defined and run in CI: lint, type-check, test, actionlint, workflow and repo checks | `pixi.toml`, `crates/xtask` |
 

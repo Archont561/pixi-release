@@ -1,0 +1,253 @@
+# Owner lane — not rendered. See doc-3 §2.1, §2.2.
+name: release
+
+# The release train's artifact half (decision-14). It runs on a `v*` tag — the annotated evidence
+# anchor (decision-4) — and does three things in order: build the conda artifact from the tagged
+# source, publish it to the project channel, then publish a GitHub Release carrying the same bytes
+# and a SHA256SUMS file.
+#
+# Registry publishing uses the OIDC trusted-publishing binding provisioned for
+# this repository: prefix.dev channel `archont561/archont561` accepts tokens from this workflow
+# file running under the `prefix` environment with `id-token: write`. Renaming this file or that
+# environment breaks publishing, and no registry token is stored in the repository.
+#
+# Prerelease tags (`vX.Y.Z-suffix`) build, prove and dry-run the registry but upload nothing, so
+# version space is only spent by a clean release.
+
+on:
+  push:
+    tags:
+      # `v*` cannot match the milestone checkpoints (`milestone-v*`, `m-v*`), which ask for a
+      # release rather than being one.
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build and publish (for example v0.1.0). Blank uses the ref.
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.classify.outputs.version }}
+      tag_name: ${{ steps.classify.outputs.tag_name }}
+      prerelease: ${{ steps.classify.outputs.prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          # The tag annotation is the release body, so the tag itself must be present.
+          fetch-depth: 0
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
+        with:
+          pixi-version: v0.83.0
+          environments: default
+          cache: true
+          locked: true
+
+      - name: Classify the tag
+        id: classify
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+          version="${tag#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'${tag}' is not a release tag"
+            exit 1
+          fi
+          prerelease=false
+          [[ "$version" == *-* ]] && prerelease=true
+          {
+            echo "tag_name=${tag}"
+            echo "version=${version}"
+            echo "prerelease=${prerelease}"
+          } >> "$GITHUB_OUTPUT"
+
+      # Bootstrap, and named so it can be deleted: `prepare` cannot write version literals yet
+      # (REL-4 shipped the dry run), so the tagged version is stamped into the manifests here.
+      # Once prepare writes them, this step becomes a check that they already agree.
+      - name: Stamp the tagged version into the manifests
+        shell: bash
+        env:
+          VERSION: ${{ steps.classify.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 - "${VERSION}" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          new = sys.argv[1]
+          cargo = Path("Cargo.toml").read_text()
+          package = re.search(r"\[workspace\.package\](.*?)(\n\[|\Z)", cargo, re.S).group(1)
+          old = re.search(r'version = "([^"]+)"', package).group(1)
+          if old == new:
+              print(f"manifests already at {new}")
+              raise SystemExit(0)
+          for name in ("Cargo.toml", "pixi.toml", "package.json", "recipe/recipe.yaml"):
+              path = Path(name)
+              path.write_text(path.read_text().replace(old, new))
+          print(f"stamped {old} -> {new}")
+          PY
+          # The lock records the workspace version, so it has to agree before `--locked` builds.
+          pixi run --frozen -- cargo metadata --format-version 1 > /dev/null
+          # Proven rather than assumed: the recipe, the manifests and the policy agree.
+          pixi run --frozen repo-check
+
+      - name: Build the conda artifact
+        run: pixi run --frozen package
+
+      - name: Verify the artifact names the tagged version
+        shell: bash
+        env:
+          VERSION: ${{ steps.classify.outputs.version }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          artifacts=(output/linux-64/pixi-release-"${VERSION}"-*.conda)
+          if [ ${#artifacts[@]} -eq 0 ]; then
+            echo "::error::no artifact named pixi-release-${VERSION}; refusing to publish a mislabelled package"
+            find output -maxdepth 3 -type f || true
+            exit 1
+          fi
+          printf '%s\n' "${artifacts[@]}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Capture the tag annotation as release notes
+        shell: bash
+        env:
+          TAG: ${{ steps.classify.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          git tag -l --format='%(contents)' "${TAG}" > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "Release ${TAG}" > release-notes.md
+          fi
+
+      - name: Write the checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          sha256sum output/linux-64/*.conda > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload the conda artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: conda-dist
+          # The directory, not a glob, so the downloaded layout is deterministic.
+          path: output
+          if-no-files-found: error
+
+      - name: Upload the release metadata
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-meta
+          path: |
+            release-notes.md
+            SHA256SUMS
+          if-no-files-found: error
+
+  prefix:
+    name: publish to prefix.dev
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The trusted-publishing binding: channel `archont561/archont561` accepts OIDC tokens from
+    # this workflow file under the `prefix` environment only. A job-level `permissions:` block
+    # replaces the workflow-level one rather than adding to it, so `id-token: write` is repeated
+    # here deliberately — omitting it turns the upload into an auth failure.
+    environment: prefix
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download the conda artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: conda-dist
+          path: output
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
+        with:
+          pixi-version: v0.83.0
+          environments: default
+          cache: true
+          locked: true
+
+      - name: Skip the upload for a prerelease
+        if: needs.build.outputs.prerelease == 'true'
+        run: |
+          echo "prefix.dev upload skipped: ${{ needs.build.outputs.version }} is a prerelease; registries only accept clean tags." >> "$GITHUB_STEP_SUMMARY"
+
+      # A missing OIDC token would otherwise surface as an opaque upload failure.
+      - name: Verify the GitHub OIDC permission
+        if: needs.build.outputs.prerelease == 'false'
+        shell: bash
+        run: ': "${ACTIONS_ID_TOKEN_REQUEST_URL:?missing GitHub OIDC request URL; grant permissions.id-token: write}" && : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?missing GitHub OIDC request token; grant permissions.id-token: write}"'
+
+      - name: Publish to the project channel
+        if: needs.build.outputs.prerelease == 'false'
+        run: pixi run --frozen publish-conda
+
+  github-release:
+    name: github release
+    needs: [build, prefix]
+    if: >-
+      always() &&
+      needs.build.result == 'success' &&
+      (needs.prefix.result == 'success' || needs.prefix.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Download the conda artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: conda-dist
+          path: output
+
+      - name: Download the release metadata
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-meta
+
+      # The bytes published here are the bytes the registry received: same artifact job, same
+      # checksums, so a consumer can verify one against the other.
+      - name: Publish the GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag_name }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(output/linux-64/*.conda SHA256SUMS)
+          flags=(--title "${TAG}" --notes-file release-notes.md --verify-tag)
+          [ "${PRERELEASE}" = "true" ] && flags+=(--prerelease)
+          gh release create "${TAG}" "${assets[@]}" "${flags[@]}"

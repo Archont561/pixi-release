@@ -59,6 +59,10 @@ backlog = { cmd = "bun x backlog", depends-on = ["bun-install"], description = "
 # that recipe (decision-6), so the artifact installs with the tool the controller executes.
 package = { cmd = "pixi exec -c conda-forge --spec 'rattler-build>=0.77,<0.78' rattler-build build --recipe recipe/recipe.yaml --output-dir output -c conda-forge", description = "Build the pixi-release conda artifact into output/" }
 
+# Registry delivery for the release lane (decision-14). prefix.dev trusted publishing exchanges
+# the workflow's GitHub OIDC token for a channel-scoped credential, so no token is stored here.
+publish-conda = { cmd = "pixi upload prefix --channel 'archont561/archont561' --generate-attestation --skip-existing output/linux-64/*.conda", description = "Upload the built conda artifact to the project channel" }
+
 # This is the local equivalent of the CI quality gate. Build remains a separate artifact gate.
 gates = { depends-on = ["lint", "typecheck", "test", "lint-actions", "workflow-check", "repo-check"], description = "Every required pre-merge check" }
 ci = { depends-on = ["gates", "build"], description = "Gates plus all workspace builds" }

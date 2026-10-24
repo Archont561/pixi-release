@@ -4,7 +4,7 @@ title: Decide per-package release scoping and milestone-driven dispatch
 status: To Do
 assignee: []
 created_date: '2026-10-23 15:01'
-updated_date: '2026-10-24 18:12'
+updated_date: '2026-10-24 18:57'
 labels:
   - release
   - architecture
@@ -46,4 +46,6 @@ Issues #7 and #8 ask for path-scoped releases (`python-v1.0.0`, `rust-v1.0.0`) a
 Partly pre-empted 2026-10-24 by `decision-14` §4: milestone tags (`milestone-v*`, `milestone/*`, `m-v*`) are now **dispatch triggers only** — they ask the train for a release, carry no version, and anchor no evidence; every release still produces exactly one `v*` annotated tag. That satisfies AC#3 as far as the trigger question goes.
 
 Still open under this task: AC#1 (whether `decision-7` is reaffirmed or superseded), AC#2 (scoped tag format and evidence anchor), AC#4 (path-scoped detection) and AC#5 stands — the implementation merged in REL-27 is the owner lane, not scoped-release code.
+
+Dormant, 2026-10-24 — decision-17 remains proposed by the owner's call. Nothing in doc-11's waves depends on it, so no work is sequenced against it and no schema binds to per-artifact versions yet.
 <!-- SECTION:NOTES:END -->

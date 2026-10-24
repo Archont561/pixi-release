@@ -86,7 +86,18 @@ parallelism come after that, and only against a measured baseline recorded in th
   these ideas (`scripts/release.py`, `crates/pixi-release/src/release/`, and this workspace). The
   duplication is the problem this product exists to remove, not a model to copy.
 
-## 6. What "done" means for this plan
+## 6. Decision state
+
+- `decision-16` is **accepted** (2026-10-24), with detection and the environment source added to it:
+  a closed table resolves format, key and scheme for a bare path, an unrecognised file is refused
+  rather than guessed at, and one policy-named environment variable may only *agree* with a version,
+  never supply one.
+- `decision-17` stays **proposed** and dormant. It gates `REL-16`, which is m-3, and nothing in this
+  plan depends on it. A proposal is not a licence to build against it.
+- `decision-3` and `decision-5` remain **proposed**, which is why `REL-5` and `REL-12` are not in the
+  near-term waves: rendering generated workflows under a proposal would decide it by accident.
+
+## 7. What "done" means for this plan
 
 Each wave ends with a green `gates` run on its merge commit and its acceptance criteria checked from
 run evidence, never from intent. A wave that cannot show a run stays open, with the missing proof
